@@ -1,0 +1,22 @@
+FROM docker.io/library/maven:3.8.7-openjdk-18-slim AS build-jwk-generator
+COPY json-web-key-generator /build
+WORKDIR /build
+RUN mvn package
+# Build the app
+# Artifact will be stored at /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar
+# RUN java -jar /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar --type RSA --size 2048 --algorithm RS256 --idGenerator sha1 --keySet --output /jwks.json --pubKeyOutput /jwks.pub.json
+
+FROM docker.io/library/debian:12 as build-slurm
+COPY deb12/*.sh ./
+COPY slurm ./slurm-src
+RUN ./build-slurm-deb.sh
+
+FROM docker.io/library/debian:12
+COPY --from=build-slurm /opt/slurm-repo /opt/slurm-repo
+COPY --from=build-slurm /etc/apt/sources.list.d/slurm.list /etc/apt/sources.list.d/slurm.list
+COPY --from=build-jwk-generator /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar /opt/json-web-key-generator.jar
+
+RUN apt-get -y update \
+	&& apt-get -y install build-essential slurm-smd-client slurm-smd-slurmd slurm-smd-slurmctld slurm-smd-slurmdbd slurm-smd-slurmrestd slurm-smd-sackd slurm-smd-sview slurm-smd-doc slurm-smd-dev slurm-smd-libpmi0 slurm-smd-libpmi2-0 systemd systemd-sysv openjdk-17-jdk openjdk-17-jre
+
+# ENTRYPOINT [ "/sbin/init" ]

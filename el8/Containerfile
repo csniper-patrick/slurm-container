@@ -1,0 +1,23 @@
+FROM docker.io/library/maven:3.8.7-openjdk-18-slim AS build-jwk-generator
+COPY json-web-key-generator /build
+WORKDIR /build
+RUN mvn package
+# Build the app
+# Artifact will be stored at /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar
+# RUN java -jar /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar --type RSA --size 2048 --algorithm RS256 --idGenerator sha1 --keySet --output /jwks.json --pubKeyOutput /jwks.pub.json
+
+FROM quay.io/rockylinux/rockylinux:8 as build-slurm
+COPY el8/*.sh ./
+COPY slurm ./slurm-src
+RUN ./build-slurm-rpm.sh
+
+FROM quay.io/rockylinux/rockylinux:8
+COPY --from=build-slurm /opt/slurm-repo /opt/slurm-repo
+COPY --from=build-slurm /etc/yum.repos.d/slurm.repo /etc/yum.repos.d/slurm.repo
+COPY --from=build-jwk-generator /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar /opt/json-web-key-generator.jar
+
+RUN yum install -y yum-utils epel-release \
+	&& yum-config-manager --enable powertools \
+	&& yum install -y slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm @development java-latest-openjdk java-latest-openjdk-devel
+
+# ENTRYPOINT [ "/sbin/init" ]
