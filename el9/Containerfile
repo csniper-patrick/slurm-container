@@ -14,10 +14,15 @@ RUN ./build-slurm-rpm.sh
 FROM quay.io/rockylinux/rockylinux:9
 COPY --from=build-slurm /opt/slurm-repo /opt/slurm-repo
 COPY --from=build-slurm /etc/yum.repos.d/slurm.repo /etc/yum.repos.d/slurm.repo
-COPY --from=build-jwk-generator /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar /opt/json-web-key-generator.jar
 
 RUN dnf -y install yum-utils epel-release \
-	&& dnf config-manager --enable crb \
-	&& dnf -y install slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm java-latest-openjdk java-latest-openjdk-devel
+&& dnf config-manager --enable crb \
+&& dnf -y install slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm java-latest-openjdk java-latest-openjdk-devel
+
+# set up jinja2-cli 
+RUN python3 -m venv /opt/entrypoint && /opt/entrypoint/bin/python3 -m pip install jinja2-cli 
+
+# set up 
+COPY --from=build-jwk-generator /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar /opt/entrypoint/lib/json-web-key-generator.jar
 
 # ENTRYPOINT [ "/sbin/init" ]
