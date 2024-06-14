@@ -6,18 +6,26 @@ RUN mvn package
 # Artifact will be stored at /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar
 # RUN java -jar /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar --type RSA --size 2048 --algorithm RS256 --idGenerator sha1 --keySet --output /jwks.json --pubKeyOutput /jwks.pub.json
 
-FROM quay.io/rockylinux/rockylinux:8 as build-slurm
+FROM quay.io/rockylinux/rockylinux:8 as build
+# Build slurm
 COPY el8/*.sh ./
 COPY slurm ./slurm-src
 RUN ./build-slurm-rpm.sh
 
+# Build entrypoint 
+COPY common/entrypoint.m4 ./
+RUN wget https://github.com/matejak/argbash/archive/refs/tags/2.10.0.tar.gz -O argbash-2.10.0.tar.gz \
+	&& tar xvf argbash-2.10.0.tar.gz \
+	&& argbash-2.10.0/bin/argbash entrypoint.m4 -o /opt/entrypoint
+
 FROM quay.io/rockylinux/rockylinux:8
-COPY --from=build-slurm /opt/slurm-repo /opt/slurm-repo
-COPY --from=build-slurm /etc/yum.repos.d/slurm.repo /etc/yum.repos.d/slurm.repo
+COPY --from=build /opt/slurm-repo /opt/slurm-repo
+COPY --from=build /etc/yum.repos.d/slurm.repo /etc/yum.repos.d/slurm.repo
+COPY --from=build /opt/entrypoint /opt/entrypoint/bin/entrypoint
 
 RUN yum install -y yum-utils epel-release \
-&& yum-config-manager --enable powertools \
-&& yum install -y slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm java-latest-openjdk java-latest-openjdk-devel
+	&& yum-config-manager --enable powertools \
+	&& yum install -y slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm java-latest-openjdk java-latest-openjdk-devel python3
 
 # set up jinja2-cli 
 RUN python3 -m venv /opt/entrypoint && /opt/entrypoint/bin/python3 -m pip install jinja2-cli 
@@ -25,4 +33,4 @@ RUN python3 -m venv /opt/entrypoint && /opt/entrypoint/bin/python3 -m pip instal
 # set up 
 COPY --from=build-jwk-generator /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar /opt/entrypoint/lib/json-web-key-generator.jar
 
-# ENTRYPOINT [ "/sbin/init" ]
+ENTRYPOINT [ "/opt/entrypoint/bin/entrypoint" ]
