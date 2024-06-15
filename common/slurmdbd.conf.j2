@@ -15,11 +15,11 @@
 #
 # slurmDBD info
 #DbdAddr=localhost
-{%- set dbd_hosts = SLURMDBD_HOSTS.split(',') -%}
+{% set dbd_hosts = SLURMDBD_HOSTS.split(',') %}
 DbdHost={{ dbd_hosts[0] }}
-{%- if dbd_hosts | length > 1 -%}
+{% if dbd_hosts | length > 1 %}
 DbdBackupHost={{ dbd_hosts[1] }}
-{%- endif -%}
+{% endif %}
 #DbdPort=7031
 SlurmUser=slurm
 #MessageTimeout=300

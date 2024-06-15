@@ -23,19 +23,6 @@ exit 11  #)Created by argbash-init v2.10.0
 # [ <-- needed because of Argbash
 
 # vvv  PLACE YOUR CODE HERE  vvv
-# For example:
-printf 'Value of --%s: %s\n' 'clustername' "$_arg_clustername"
-printf 'Value of --%s: %s\n' 'role' "$_arg_role"
-printf 'Value of --%s: %s\n' 'slurmdbd-hosts' "$_arg_slurmdbd_hosts"
-printf 'Value of --%s: %s\n' 'slurmctld-hosts' "$_arg_slurmctld_hosts"
-printf 'Value of --%s: %s\n' 'db' "$_arg_db"
-printf 'Value of --%s: %s\n' 'dbhost' "$_arg_dbhost"
-printf 'Value of --%s: %s\n' 'dbuser' "$_arg_dbuser"
-printf 'Value of --%s: %s\n' 'dbpass' "$_arg_dbpass"
-printf "'%s' is %s\\n" 'init' "$_arg_init"
-printf "'%s' is %s\\n" 'keygen' "$_arg_keygen"
-printf "'%s' is %s\\n" 'configless' "$_arg_configless"
-
 # input validation
 
 # SLURM_ROLE
@@ -104,15 +91,15 @@ check_config_file () {
 	slurm_user=$(grep -E "^SlurmUser=" /etc/slurm/slurm*.conf | cut -c11- | head -n1)
 	slurm_group=$(id -gn ${slurm_user})
 
-	for slurm_dir in $(grep -E "^(StateSaveLocation)=" /etc/slurm/slurm*.conf | cut -d= -f2-) ; do
-		mkdir -pv ${slurm_dir} && chown ${slurm_user}:${slurm_group} ${slurm_file}
+	for slurm_dir in $(grep -E "^(StateSaveLocation)=" /etc/slurm/slurm*.conf | cut -d= -f2-) /run/slurmdbd /run/slurmctld /var/log/slurm ; do
+		mkdir -pv ${slurm_dir} && chown ${slurm_user}:${slurm_group} ${slurm_dir}
 	done
 
 	for slurm_file in $(grep -E "^(SlurmctldLogFile|SlurmctldPidFile|SlurmctldLogFile|LogFile|PidFile)=" /etc/slurm/slurm*.conf | cut -d= -f2-) ; do
 		touch ${slurm_file} && chown ${slurm_user}:${slurm_group} ${slurm_file}
 	done
 
-	chown -R ${slurm_user}:${slurm_group} /etc/slurm /var/spool/slurmctld
+	chown -R ${slurm_user}:${slurm_group} /etc/slurm /var/spool/slurmctld 
 }
 
 set -x
@@ -121,7 +108,6 @@ if [[ ${SLURM_ROLE} == slurmctld ]] ; then
 	# Role slurmctld
 	check_config_file
 	run_user=$(grep -E "^SlurmUser=" /etc/slurm/slurm.conf | cut -c11- | head -n1)
-	touch /var/log/slurmctld.log /var/run/slurmctld.pid && mkdir -pv /run/slurmctld && chown -R ${run_user}: /var/log/slurmctld.log /run/slurmctld
 	sudo -u ${run_user} slurmctld -D -v $SLURMCTLD_OPTIONS
 elif [[ ${SLURM_ROLE} == slurmdbd ]] ; then
 	# Role slurmdbd
