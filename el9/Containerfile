@@ -22,6 +22,7 @@ FROM quay.io/rockylinux/rockylinux:9
 COPY --from=build /opt/slurm-repo /opt/slurm-repo
 COPY --from=build /etc/yum.repos.d/slurm.repo /etc/yum.repos.d/slurm.repo
 COPY --from=build /opt/entrypoint /opt/entrypoint/bin/entrypoint
+COPY common/*.j2 /opt/entrypoint/
 
 RUN dnf -y install yum-utils epel-release \
 	&& dnf config-manager --enable crb \
