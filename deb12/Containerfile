@@ -25,7 +25,10 @@ COPY --from=build /opt/entrypoint /opt/entrypoint/bin/entrypoint
 COPY common/*.j2 /opt/entrypoint/
 
 RUN apt-get -y update \
-	&& apt-get -y install slurm-smd-client slurm-smd-slurmd slurm-smd-slurmctld slurm-smd-slurmdbd slurm-smd-slurmrestd slurm-smd-sackd slurm-smd-sview slurm-smd-doc slurm-smd-dev slurm-smd-libpmi0 slurm-smd-libpmi2-0 systemd systemd-sysv openjdk-17-jdk openjdk-17-jre python3 python3-pip python3-dev python3-venv libpython3-dev libpython3-stdlib
+	&& apt-get -y install slurm-smd-client slurm-smd-slurmd slurm-smd-slurmctld slurm-smd-slurmdbd slurm-smd-slurmrestd slurm-smd-sackd slurm-smd-sview slurm-smd-doc slurm-smd-dev slurm-smd-libpmi0 slurm-smd-libpmi2-0 systemd systemd-sysv openjdk-17-jdk openjdk-17-jre python3 python3-pip python3-dev python3-venv libpython3-dev libpython3-stdlib sudo 
+
+# create slurm user
+RUN useradd -r -b /var/lib slurm
 
 # set up jinja2-cli 
 RUN python3 -m venv /opt/entrypoint && /opt/entrypoint/bin/python3 -m pip install jinja2-cli 

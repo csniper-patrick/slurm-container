@@ -3,7 +3,7 @@
 # m4_ignore(
 echo "This is just a script template, not the script (yet) - pass it to 'argbash' to fix this." >&2
 exit 11  #)Created by argbash-init v2.10.0
-# ARG_OPTIONAL_SINGLE([clustername], , [name of the cluster, required for init], [slurm])
+# ARG_OPTIONAL_SINGLE([clustername], , [name of the cluster, required for init], )
 # ARG_OPTIONAL_SINGLE([role], , [slurmctld(default)|slurmdbd|slurmd|slurmrestd], [slurmctld])
 # ARG_OPTIONAL_SINGLE([slurmdbd-hosts])
 # ARG_OPTIONAL_SINGLE([slurmctld-hosts])
@@ -70,13 +70,13 @@ CONFIGLESS=${CONFIGLESS:=$_arg_configless}
 check_config_file () {
 	# generate slurmdbd.conf if necessary
 	( [[ -f /etc/slurm/slurmdbd.conf ]] && [[ ${CONF_INIT} == off ]] ) || [[ ! ${SLURM_ROLE} == slurmdbd ]] \
-	|| /opt/entrypoint/bin/jinja2 \
+	|| ( /opt/entrypoint/bin/jinja2 \
 		-D MYSQL_HOST=${MYSQL_HOST:?MYSQL_HOST is unset or null} \
 		-D MYSQL_USER=${MYSQL_USER:?MYSQL_USER is unset or null} \
 		-D MYSQL_PASSWORD=${MYSQL_PASSWORD:?MYSQL_PASSWORD is unset or null} \
 		-D MYSQL_DATABASE=${MYSQL_DATABASE:?MYSQL_DATABASE is unset or null} \
 		-D SLURMDBD_HOSTS=${SLURMDBD_HOSTS:?SLURMDBD_HOSTS is unset or null} \
-		/opt/entrypoint/slurmdbd.conf.j2 > /etc/slurm/slurmdbd.conf
+		/opt/entrypoint/slurmdbd.conf.j2 > /etc/slurm/slurmdbd.conf && chmod 0600 /etc/slurm/slurmdbd.conf )
 	
 	# generate slurm.conf if necessary
 	( [[ -f /etc/slurm/slurm.conf ]] && [[ ${CONF_INIT} == off ]] ) || [[ ! ${SLURM_ROLE} == slurmctld ]] \
@@ -92,10 +92,27 @@ check_config_file () {
 
 	# generate jwks if necessary
 
+	for public_key in $( grep -E "^AuthAltParameters=" /etc/slurm/slurm*.conf | cut -c19- | tr ',' '\n' | grep -E "^jwks=" | cut -c6- ) ; do
+		private_key=${public_key}.priv
+		( [[ -f ${public_key} ]] && [[ ${KEYGEN} == off ]] ) || ( java -jar /opt/entrypoint/lib/json-web-key-generator.jar --type RSA --size 2048 --algorithm RS256 --idGenerator sha1 --keySet --output ${private_key} --pubKeyOutput ${public_key} && chmod 0644 ${public_key} && chmod 0600 ${private_key} )
+	done
+
 	# generate /etc/slurm/slurm.key if necessary
+	( [[ -f /etc/slurm/slurm.key ]] && [[ ${KEYGEN} == off ]] ) || ( dd if=/dev/random of=/etc/slurm/slurm.key bs=1024 count=1 && chmod 0600 /etc/slurm/slurm.key )
 
-	# ensure correct file permission and ownership
+	# ensure correct directory ownership
+	slurm_user=$(grep -E "^SlurmUser=" /etc/slurm/slurm*.conf | cut -c11- | head -n1)
+	slurm_group=$(id -gn ${slurm_user})
 
+	for slurm_dir in $(grep -E "^(StateSaveLocation)=" /etc/slurm/slurm*.conf | cut -d= -f2-) ; do
+		mkdir -pv ${slurm_dir} && chown ${slurm_user}:${slurm_group} ${slurm_file}
+	done
+
+	for slurm_file in $(grep -E "^(SlurmctldLogFile|SlurmctldPidFile|SlurmctldLogFile|LogFile|PidFile)=" /etc/slurm/slurm*.conf | cut -d= -f2-) ; do
+		touch ${slurm_file} && chown ${slurm_user}:${slurm_group} ${slurm_file}
+	done
+
+	chown -R ${slurm_user}:${slurm_group} /etc/slurm /var/spool/slurmctld
 }
 
 set -x
@@ -103,17 +120,22 @@ set -x
 if [[ ${SLURM_ROLE} == slurmctld ]] ; then
 	# Role slurmctld
 	check_config_file
-	echo mode ${SLURM_ROLE}
+	run_user=$(grep -E "^SlurmUser=" /etc/slurm/slurm.conf | cut -c11- | head -n1)
+	touch /var/log/slurmctld.log /var/run/slurmctld.pid && mkdir -pv /run/slurmctld && chown -R ${run_user}: /var/log/slurmctld.log /run/slurmctld
+	sudo -u ${run_user} slurmctld -D -v $SLURMCTLD_OPTIONS
 elif [[ ${SLURM_ROLE} == slurmdbd ]] ; then
 	# Role slurmdbd
 	check_config_file
-	echo mode ${SLURM_ROLE}
+	run_user=$(grep -E "^SlurmUser=" /etc/slurm/slurmdbd.conf | cut -c11- | head -n1)
+	sudo -u ${run_user} slurmdbd -D -s -v ${SLURMDBD_OPTIONS}
 elif [[ ${SLURM_ROLE} == slurmd ]] ; then
 	# Role slurmd
-	echo mode ${SLURM_ROLE}
+	slurmd -D -v
 elif [[ ${SLURM_ROLE} == slurmrestd ]] ; then
 	# Role slurmrestd
-	echo mode ${SLURM_ROLE}
+	export SLURMRESTD_SECURITY=DISABLE_USER_CHECK
+	export SLURM_JWT=daemon
+	slurmrestd -v $SLURMRESTD_OPTIONS 0.0.0.0:6820
 
 fi
 

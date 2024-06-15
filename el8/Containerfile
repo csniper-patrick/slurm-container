@@ -26,7 +26,10 @@ COPY common/*.j2 /opt/entrypoint/
 
 RUN yum install -y yum-utils epel-release \
 	&& yum-config-manager --enable powertools \
-	&& yum install -y slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm java-latest-openjdk java-latest-openjdk-devel python3
+	&& yum install -y slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm java-latest-openjdk java-latest-openjdk-devel python3 sudo
+
+# create slurm user
+RUN useradd -r -b /var/lib slurm
 
 # set up jinja2-cli 
 RUN python3 -m venv /opt/entrypoint && /opt/entrypoint/bin/python3 -m pip install jinja2-cli 
