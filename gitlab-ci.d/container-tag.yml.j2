@@ -28,7 +28,6 @@ tag-{{ tag.name | default("default", true) }}-image:
 {%- set latest_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-latest" -%}
 {%- set yyyymm_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-" + YYYYMM -%}
 {% endif %}
-{% endif %}
 dockerhub-{{ tag.name | default("default", true) }}-image:
   stage: deploy
   image: quay.io/podman/stable
