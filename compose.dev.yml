@@ -104,6 +104,18 @@ services:
     depends_on:
       master-1:
         condition: service_healthy
+  
+  api:
+    <<: *slurm-container
+    command: --role slurmrestd
+    deploy:
+      mode: replicated
+      replicas: 2
+    healthcheck:
+      test: "nc -z localhost 6820"
+    depends_on:
+      master-1:
+        condition: service_healthy
 
 networks:
   default: {}
