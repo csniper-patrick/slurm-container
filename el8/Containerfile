@@ -26,7 +26,7 @@ COPY common/*.j2 /opt/entrypoint/
 
 RUN yum install -y yum-utils epel-release \
 	&& yum-config-manager --enable powertools \
-	&& yum install -y slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm java-latest-openjdk java-latest-openjdk-devel python3 sudo
+	&& yum install -y slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm java-latest-openjdk java-latest-openjdk-devel python3 sudo hostname nc
 
 # create slurm user
 RUN useradd -r -b /var/lib slurm

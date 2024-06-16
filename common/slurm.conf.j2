@@ -116,11 +116,11 @@ SelectType=select/cons_tres
 AccountingStorageEnforce=associations,qos,limits
 AccountingStorageType=accounting_storage/slurmdbd
 AccountingStoreFlags=job_env,job_script
-{%- set dbd_hosts = SLURMDBD_HOSTS.split(',') -%}
+{% set dbd_hosts = SLURMDBD_HOSTS.split(',') %}
 AccountingStorageHost={{ dbd_hosts[0] }}
-{%- if dbd_hosts | length > 1 -%}
+{% if dbd_hosts | length > 1 %}
 AccountingStorageBackupHost={{ dbd_hosts[1] }}
-{%- endif -%}
+{% endif %}
 {% else %}
 #AccountingStorageEnforce=associations,qos,limits
 #AccountingStorageType=accounting_storage/slurmdbd

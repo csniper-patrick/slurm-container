@@ -42,7 +42,7 @@ CLUSTERNAME=${CLUSTERNAME:=$_arg_clustername}
 MYSQL_DATABASE=${MYSQL_DATABASE:=$_arg_db}
 MYSQL_USER=${MYSQL_USER:=$_arg_dbuser}
 MYSQL_PASSWORD=${MYSQL_PASSWORD:=$_arg_dbpass}
-MYSQL_HOST=${MYSQL_HOST:=$_arg_dbhost}
+SLURMDBD_STORAGEHOST=${SLURMDBD_STORAGEHOST:=$_arg_dbhost}
 
 # on/off configs
 CONF_INIT=${CONF_INIT:=$_arg_init}
@@ -58,7 +58,7 @@ check_config_file () {
 	# generate slurmdbd.conf if necessary
 	( [[ -f /etc/slurm/slurmdbd.conf ]] && [[ ${CONF_INIT} == off ]] ) || [[ ! ${SLURM_ROLE} == slurmdbd ]] \
 	|| ( /opt/entrypoint/bin/jinja2 \
-		-D MYSQL_HOST=${MYSQL_HOST:?MYSQL_HOST is unset or null} \
+		-D SLURMDBD_STORAGEHOST=${SLURMDBD_STORAGEHOST:?SLURMDBD_STORAGEHOST is unset or null} \
 		-D MYSQL_USER=${MYSQL_USER:?MYSQL_USER is unset or null} \
 		-D MYSQL_PASSWORD=${MYSQL_PASSWORD:?MYSQL_PASSWORD is unset or null} \
 		-D MYSQL_DATABASE=${MYSQL_DATABASE:?MYSQL_DATABASE is unset or null} \
@@ -79,7 +79,7 @@ check_config_file () {
 
 	# generate jwks if necessary
 
-	for public_key in $( grep -E "^AuthAltParameters=" /etc/slurm/slurm*.conf | cut -c19- | tr ',' '\n' | grep -E "^jwks=" | cut -c6- ) ; do
+	for public_key in $( grep -h -E "^AuthAltParameters=" /etc/slurm/slurm*.conf | cut -c19- | tr ',' '\n' | grep -h -E "^jwks=" | cut -c6- ) ; do
 		private_key=${public_key}.priv
 		( [[ -f ${public_key} ]] && [[ ${KEYGEN} == off ]] ) || ( java -jar /opt/entrypoint/lib/json-web-key-generator.jar --type RSA --size 2048 --algorithm RS256 --idGenerator sha1 --keySet --output ${private_key} --pubKeyOutput ${public_key} && chmod 0644 ${public_key} && chmod 0600 ${private_key} )
 	done
@@ -88,14 +88,14 @@ check_config_file () {
 	( [[ -f /etc/slurm/slurm.key ]] && [[ ${KEYGEN} == off ]] ) || ( dd if=/dev/random of=/etc/slurm/slurm.key bs=1024 count=1 && chmod 0600 /etc/slurm/slurm.key )
 
 	# ensure correct directory ownership
-	slurm_user=$(grep -E "^SlurmUser=" /etc/slurm/slurm*.conf | cut -c11- | head -n1)
+	slurm_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurm*.conf | cut -c11- | head -n1)
 	slurm_group=$(id -gn ${slurm_user})
 
-	for slurm_dir in $(grep -E "^(StateSaveLocation)=" /etc/slurm/slurm*.conf | cut -d= -f2-) /run/slurmdbd /run/slurmctld /var/log/slurm ; do
+	for slurm_dir in $(grep -h -E "^(StateSaveLocation)=" /etc/slurm/slurm*.conf | cut -d= -f2-) /run/slurmdbd /run/slurmctld /var/log/slurm ; do
 		mkdir -pv ${slurm_dir} && chown ${slurm_user}:${slurm_group} ${slurm_dir}
 	done
 
-	for slurm_file in $(grep -E "^(SlurmctldLogFile|SlurmctldPidFile|SlurmctldLogFile|LogFile|PidFile)=" /etc/slurm/slurm*.conf | cut -d= -f2-) ; do
+	for slurm_file in $(grep -h -E "^(SlurmctldLogFile|SlurmctldPidFile|SlurmctldLogFile|LogFile|PidFile)=" /etc/slurm/slurm*.conf | cut -d= -f2-) ; do
 		touch ${slurm_file} && chown ${slurm_user}:${slurm_group} ${slurm_file}
 	done
 
@@ -107,12 +107,12 @@ set -x
 if [[ ${SLURM_ROLE} == slurmctld ]] ; then
 	# Role slurmctld
 	check_config_file
-	run_user=$(grep -E "^SlurmUser=" /etc/slurm/slurm.conf | cut -c11- | head -n1)
+	run_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurm.conf | cut -c11- | head -n1)
 	sudo -u ${run_user} slurmctld -D -v $SLURMCTLD_OPTIONS
 elif [[ ${SLURM_ROLE} == slurmdbd ]] ; then
 	# Role slurmdbd
 	check_config_file
-	run_user=$(grep -E "^SlurmUser=" /etc/slurm/slurmdbd.conf | cut -c11- | head -n1)
+	run_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurmdbd.conf | cut -c11- | head -n1)
 	sudo -u ${run_user} slurmdbd -D -s -v ${SLURMDBD_OPTIONS}
 elif [[ ${SLURM_ROLE} == slurmd ]] ; then
 	# Role slurmd

@@ -1,0 +1,109 @@
+volumes:
+  spool-slurmctld:
+    external: false
+  etc-slurm:
+    external: false
+  home:
+    external: false
+  slurm_acct_db:
+    external: false
+
+
+x-common-volumes: &common-volumes
+  - spool-slurmctld:/var/spool/slurmctld
+  - etc-slurm:/etc/slurm
+  - home:/home
+
+x-database-volumes: &database-volumes
+  - slurm_acct_db:/var/lib/mysql
+
+x-env-var: &env-var
+  - SLURMCTLD_HOSTS=slurm-container-master-1,slurm-container-master-2
+  - SLURMDBD_HOSTS=slurm-container-slurmdb-1,slurm-container-slurmdb-2
+  - CLUSTERNAME=test
+  - MYSQL_PASSWORD=password
+  - MYSQL_USER=slurm
+  - MYSQL_DATABASE=slurm_acct_db
+  - MYSQL_RANDOM_ROOT_PASSWORD=yes
+  - SLURMDBD_STORAGEHOST=slurm-container-db
+
+
+x-slurm-container: &slurm-container
+  image: localhost/slurm:${TAG:-el9}
+  build:
+    context: .
+    dockerfile: ${TAG:-el9}/Containerfile
+  volumes: *common-volumes
+  privileged: true
+  environment: *env-var
+
+services:
+  mariadb:
+    image: mariadb:lts
+    container_name: slurm-container-db
+    hostname: slurm-container-db
+    volumes: *database-volumes
+    environment: *env-var
+    healthcheck:
+      test: "healthcheck.sh --su-mysql --connect --innodb_initialized"
+
+  slurmdb-1:
+    <<: *slurm-container
+    hostname: slurm-container-slurmdb-1
+    container_name: slurm-container-slurmdb-1
+    command: --role slurmdbd
+    healthcheck:
+      test: "nc -z localhost 6819"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  slurmdb-2:
+    <<: *slurm-container
+    hostname: slurm-container-slurmdb-2
+    container_name: slurm-container-slurmdb-2
+    command: --role slurmdbd
+    healthcheck:
+      test: "nc -z localhost 6819"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      slurmdb-1:
+        condition: service_healthy
+
+  master-1:
+    <<: *slurm-container
+    hostname: slurm-container-master-1
+    container_name: slurm-container-master-1
+    command: --role slurmctld
+    healthcheck:
+      test: "nc -z localhost 6817"
+    depends_on:
+      slurmdb-1:
+        condition: service_healthy
+
+  master-2:
+    <<: *slurm-container
+    hostname: slurm-container-master-2
+    container_name: slurm-container-master-2
+    command: --role slurmctld
+    healthcheck:
+      test: "nc -z localhost 6817"
+    depends_on:
+      master-1:
+        condition: service_healthy
+
+  compute:
+    <<: *slurm-container
+    command: --role slurmd
+    deploy:
+      mode: replicated
+      replicas: 2
+    healthcheck:
+      test: "nc -z localhost 6818"
+    depends_on:
+      master-1:
+        condition: service_healthy
+
+networks:
+  default: {}

@@ -38,7 +38,7 @@ AuthAltTypes=auth/jwt
 AuthAltParameters=jwks=/etc/slurm/jwks.json
 # Database info
 StorageType=accounting_storage/mysql
-StorageHost={{ MYSQL_HOST }}
+StorageHost={{ SLURMDBD_STORAGEHOST }}
 #StoragePort=1234
 StoragePass={{ MYSQL_PASSWORD }}
 StorageUser={{ MYSQL_USER }}
