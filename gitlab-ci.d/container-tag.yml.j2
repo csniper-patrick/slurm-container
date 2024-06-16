@@ -1,0 +1,45 @@
+{% for tag in tags %}
+{%- set source_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + tag.distro + "-${CI_COMMIT_SHORT_SHA}" -%}
+{% if tag.name is not none %}
+{%- set latest_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + tag.name + "-latest" -%}
+{%- set yyyymm_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + tag.name + "-" + YYYYMM -%}
+{% else %}
+{%- set latest_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-latest" -%}
+{%- set yyyymm_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + YYYYMM -%}
+{% endif %}
+tag-{{ tag.name | default("default", true) }}-image:
+  stage: deploy
+  image: quay.io/podman/stable
+  before_script:
+    - podman login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" ${CI_REGISTRY}
+  script:
+    - podman pull {{ source_tag }}
+    - podman tag {{ source_tag }} {{ latest_tag }} && podman push {{ latest_tag }}
+    - podman tag {{ source_tag }} {{ yyyymm_tag }} && podman push {{ yyyymm_tag }}
+
+{% endfor %}
+
+{% for tag in tags %}
+{%- set source_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-" + tag.distro + "-${CI_COMMIT_SHORT_SHA}" -%}
+{% if tag.name is not none %}
+{%- set latest_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-" + tag.name + "-latest" -%}
+{%- set yyyymm_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-" + tag.name + "-" + YYYYMM -%}
+{% else %}
+{%- set latest_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-latest" -%}
+{%- set yyyymm_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-" + YYYYMM -%}
+{% endif %}
+{% endif %}
+dockerhub-{{ tag.name | default("default", true) }}-image:
+  stage: deploy
+  image: quay.io/podman/stable
+  before_script:
+    - podman login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" ${CI_REGISTRY}
+    - podman login -u "${DOCKER_USERNAME}" -p "${DOCKER_TOKEN}" docker.io
+  script:
+    - podman pull {{ source_tag }}
+    - podman tag {{ source_tag }} {{ latest_tag }} && podman push {{ latest_tag }}
+    - podman tag {{ source_tag }} {{ yyyymm_tag }} && podman push {{ yyyymm_tag }}
+  rules:
+    - if: $DOCKER_USERNAME && $DOCKER_TOKEN && $DOCKER_REPO
+
+{% endfor %}

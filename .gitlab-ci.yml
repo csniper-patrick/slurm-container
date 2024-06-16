@@ -1,0 +1,33 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+cache: []
+
+stages:
+  - init
+  # - test
+  - build
+  - deploy
+
+include:
+  - local: 'gitlab-ci.d/init.yml'
+
+build:
+  stage: build
+  trigger:
+    include:
+      - artifact: gitlab-ci.d/container-build.yml
+        job: generate-pipeline
+    strategy: depend
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED == 'true'
+
+tag:
+  stage: deploy
+  trigger:
+    include:
+      - artifact: gitlab-ci.d/container-tag.yml
+        job: generate-pipeline
+    strategy: depend
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

@@ -1,0 +1,15 @@
+{% for distro in distros %}
+{%- set tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + distro + "-${CI_COMMIT_SHORT_SHA}" -%}
+{%- set containerfile = distro + "/Containerfile" -%}
+build-{{ distro }}-image:
+  stage: build
+  hooks:
+      pre_get_sources_script:
+      - umask 0022
+  image: quay.io/podman/stable
+  before_script:
+    - podman login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" ${CI_REGISTRY}
+  script:
+  - ( podman pull {{ tag }} ) || ( podman build --squash -f {{ containerfile }} -t {{ tag }} . && podman push {{ tag }} )
+
+{% endfor %}
