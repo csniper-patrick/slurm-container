@@ -116,13 +116,13 @@ elif [[ ${SLURM_ROLE} == slurmdbd ]] ; then
 	sudo -u ${run_user} slurmdbd -D -s -v ${SLURMDBD_OPTIONS}
 elif [[ ${SLURM_ROLE} == slurmd ]] ; then
 	# Role slurmd
-	slurmd -D -v
+	# slurmd -D -v -Z
+	exec /sbin/init
 elif [[ ${SLURM_ROLE} == slurmrestd ]] ; then
 	# Role slurmrestd
 	export SLURMRESTD_SECURITY=DISABLE_USER_CHECK
 	export SLURM_JWT=daemon
 	slurmrestd -v $SLURMRESTD_OPTIONS 0.0.0.0:6820
-
 fi
 
 # ^^^  TERMINATE YOUR CODE BEFORE THE BOTTOM ARGBASH MARKER  ^^^

@@ -37,4 +37,10 @@ RUN python3 -m venv /opt/entrypoint && /opt/entrypoint/bin/python3 -m pip instal
 # set up 
 COPY --from=build-jwk-generator /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar /opt/entrypoint/lib/json-web-key-generator.jar
 
+# start slurmd via systemd
+COPY common/slurmd-extra.conf /etc/systemd/system/slurmd.service.d/
+RUN ln -s /usr/lib/systemd/system/{slurmd,sackd}.service /etc/systemd/system/multi-user.target.wants/ \
+	&& rm -f /etc/systemd/system/systemd-logind.service 
+
+
 ENTRYPOINT [ "/opt/entrypoint/bin/entrypoint" ]
