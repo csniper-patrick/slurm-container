@@ -1,5 +1,5 @@
 {% for tag in tags %}
-{%- set source_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + tag.distro + "-${CI_COMMIT_SHORT_SHA}" -%}
+{%- set source_tag = "${CI_REGISTRY_IMAGE}/slurm:${CI_COMMIT_SHORT_SHA}-" + slurm_ver + "-" + tag.distro -%}
 {% if tag.name is not none %}
 {%- set latest_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + tag.name -%}
 {%- set yyyymm_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + tag.name + "-" + YYYYMM -%}
@@ -20,7 +20,7 @@ tag-{{ tag.name | default("default", true) }}-image:
 {% endfor %}
 
 {% for tag in tags %}
-{%- set source_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + tag.distro + "-${CI_COMMIT_SHORT_SHA}" -%}
+{%- set source_tag = "${CI_REGISTRY_IMAGE}/slurm:${CI_COMMIT_SHORT_SHA}-" + slurm_ver + "-" + tag.distro -%}
 {% if tag.name is not none %}
 {%- set latest_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-" + tag.name -%}
 {%- set yyyymm_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-" + tag.name + "-" + YYYYMM -%}

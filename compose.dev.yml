@@ -17,16 +17,16 @@ x-common-volumes: &common-volumes
 x-database-volumes: &database-volumes
   - slurm_acct_db:/var/lib/mysql
 
-x-env-var: &env-var
+# All these variable are required for initialising database and cluster configure. Once the cluster has initialised, it follows the configuration saved in the volumes on restart. 
+x-init-var: &init-var
   - SLURMCTLD_HOSTS=slurm-container-master-1,slurm-container-master-2
   - SLURMDBD_HOSTS=slurm-container-slurmdb-1,slurm-container-slurmdb-2
-  - CLUSTERNAME=test
-  - MYSQL_PASSWORD=password
-  - MYSQL_USER=slurm
-  - MYSQL_DATABASE=slurm_acct_db
-  - MYSQL_RANDOM_ROOT_PASSWORD=yes
+  - CLUSTERNAME=demo
+  - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+  - MYSQL_USER=${MYSQL_USER}
+  - MYSQL_DATABASE=${MYSQL_DATABASE:=slurm_acct_db}
+  - MYSQL_RANDOM_ROOT_PASSWORD=${MYSQL_RANDOM_ROOT_PASSWORD:=yes}
   - SLURMDBD_STORAGEHOST=slurm-container-db
-
 
 x-slurm-container: &slurm-container
   image: localhost/slurm:${TAG:-el9}
@@ -35,7 +35,7 @@ x-slurm-container: &slurm-container
     dockerfile: ${TAG:-el9}/Containerfile
   volumes: *common-volumes
   privileged: true
-  environment: *env-var
+  environment: *init-var
 
 services:
   mariadb:
@@ -43,7 +43,7 @@ services:
     container_name: slurm-container-db
     hostname: slurm-container-db
     volumes: *database-volumes
-    environment: *env-var
+    environment: *init-var
     healthcheck:
       test: "healthcheck.sh --su-mysql --connect --innodb_initialized"
 

@@ -1,5 +1,5 @@
 {% for distro in distros %}
-{%- set tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + distro + "-${CI_COMMIT_SHORT_SHA}" -%}
+{%- set tag = "${CI_REGISTRY_IMAGE}/slurm:${CI_COMMIT_SHORT_SHA}-" + slurm_ver + "-" + distro -%}
 {%- set containerfile = distro + "/Containerfile" -%}
 build-{{ distro }}-image:
   stage: build
