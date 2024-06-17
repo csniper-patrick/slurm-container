@@ -31,19 +31,37 @@ root@slurm-master# podman run --it --rm --name slurmctld --hostname slurm-master
 ```
 If you make changes to slurm.conf, make sure you sync the file across the cluster, and then either restart the container or run `scontrol reconfigure` . 
 
-### Local Demo cluster (./compose.yml)
-![demo cluster](./imgs/demo-cluster.drawio.svg)
+
+### Extract packages for compute node installation
+This container image comes with the local repository containing all the slurm packages you need. You could extract the packages following these steps. (eg. extract to /opt/slurm-repo):
+```bash
+podman create --name temp_container slurm:<tag> # create a container, without starting it
+podman cp temp_container:/opt/slurm-repo/ /opt/slurm-repo/ # copy local repository
+podman rm temp_container
+```
+The extracted directory contains a repository definition file: `slurm.repo` for dnf repository, `slurm.list` for apt repository. modify the path in the file if needed, and copy them to either `/etc/yum.repos.d/` or `/etc/apt/sources.list.d/` depends on distro, and now you can install the exact version and build of slurm used by the container. 
+
+## More examples
+
+### Local Demo cluster (`./compose.yml`)
+![demo cluster](./imgs/demo-cluster.drawio.svg)  
+
 The compose.yml file included in the repository creates a very simple cluster with slurmdbd and slurmrestd enabled. 
 ```
-podman compose up -d --force-recreate
+podman compose -f compose.yml up -d --force-recreate
 ```
 In the 4 slurm containers, slurmd container is required to run in systemd mode. Other containers simply start the process in the foreground.
 
-### More complicated cluster (./compose.dev.yml)
-![demo cluster](./imgs/ha-compose.drawio.svg)
+### More complicated cluster (`./compose.dev.yml`)
+![demo cluster](./imgs/ha-compose.drawio.svg)  
+
 This compose file expects a locally built image, and starts the container cluster with 2 daemons for every service. 
 
-### Useage
+```
+podman compose -f compose.dev.yml up -d --force-recreate
+```
+
+### Usage
 ```
 $ podman run -it slurm:el9 --help
 Usage: /opt/local/bin/entrypoint [--clustername <arg>] [--role <arg>] [--slurmdbd-hosts <arg>] [--slurmctld-hosts <arg>] [--db <arg>] [--dbhost <arg>] [--dbuser <arg>] [--dbpass <arg>] [--(no-)init] [--(no-)keygen] [--(no-)configless] [-h|--help]
