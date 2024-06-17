@@ -21,8 +21,8 @@ RUN wget https://github.com/matejak/argbash/archive/refs/tags/2.10.0.tar.gz -O a
 FROM quay.io/rockylinux/rockylinux:9
 COPY --from=build /opt/slurm-repo /opt/slurm-repo
 COPY --from=build /etc/yum.repos.d/slurm.repo /etc/yum.repos.d/slurm.repo
-COPY --from=build /opt/entrypoint /opt/entrypoint/bin/entrypoint
-COPY common/*.j2 /opt/entrypoint/
+COPY --from=build /opt/entrypoint /opt/local/bin/entrypoint
+COPY common/*.j2 LICENSE /opt/local/
 
 RUN dnf -y install yum-utils epel-release \
 	&& dnf config-manager --enable crb \
@@ -32,10 +32,10 @@ RUN dnf -y install yum-utils epel-release \
 RUN useradd -r -b /var/lib slurm
 
 # set up jinja2-cli 
-RUN python3 -m venv /opt/entrypoint && /opt/entrypoint/bin/python3 -m pip install jinja2-cli 
+RUN python3 -m venv /opt/local && /opt/local/bin/python3 -m pip install jinja2-cli 
 
 # set up json-web-key-generator
-COPY --from=build-jwk-generator /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar /opt/entrypoint/lib/json-web-key-generator.jar
+COPY --from=build-jwk-generator /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar /opt/local/lib/json-web-key-generator.jar
 
 # start slurmd via systemd
 COPY common/slurmd-extra.conf /etc/systemd/system/slurmd.service.d/
@@ -46,4 +46,4 @@ RUN ln -sf /lib/systemd/system/multi-user.target /etc/systemd/system/default.tar
 # Expose port used by slurm
 EXPOSE 6817-6820
 
-ENTRYPOINT [ "/opt/entrypoint/bin/entrypoint" ]
+ENTRYPOINT [ "/opt/local/bin/entrypoint" ]
