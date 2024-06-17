@@ -20,6 +20,7 @@ RUN wget https://github.com/matejak/argbash/archive/refs/tags/2.10.0.tar.gz -O a
 
 FROM quay.io/rockylinux/rockylinux:8
 COPY --from=build /opt/slurm-repo /opt/slurm-repo
+COPY --from=build /etc/yum.repos.d/slurm.repo /opt/slurm-repo
 COPY --from=build /etc/yum.repos.d/slurm.repo /etc/yum.repos.d/slurm.repo
 COPY --from=build /opt/entrypoint /opt/local/bin/entrypoint
 COPY common/*.j2 LICENSE /opt/local/
