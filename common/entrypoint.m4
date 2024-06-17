@@ -3,21 +3,21 @@
 # m4_ignore(
 echo "This is just a script template, not the script (yet) - pass it to 'argbash' to fix this." >&2
 exit 11  #)Created by argbash-init v2.10.0
-# ARG_OPTIONAL_SINGLE([clustername], , [name of the cluster, required for init], )
-# ARG_OPTIONAL_SINGLE([role], , [slurmctld(default)|slurmdbd|slurmd|slurmrestd], [slurmctld])
-# ARG_OPTIONAL_SINGLE([slurmdbd-hosts])
-# ARG_OPTIONAL_SINGLE([slurmctld-hosts])
-# ARG_OPTIONAL_SINGLE([db])
-# ARG_OPTIONAL_SINGLE([dbhost])
-# ARG_OPTIONAL_SINGLE([dbuser])
-# ARG_OPTIONAL_SINGLE([dbpass])
-# ARG_OPTIONAL_BOOLEAN([init])
-# ARG_OPTIONAL_BOOLEAN([keygen])
+# ARG_OPTIONAL_SINGLE([clustername], , [name of the cluster, required for init. env var: CLUSTERNAME], )
+# ARG_OPTIONAL_SINGLE([role], , [slurmctld(default)|slurmdbd|slurmd|slurmrestd. env var: SLURM_ROLE], [slurmctld])
+# ARG_OPTIONAL_SINGLE([slurmdbd-hosts], , [comma separated list of slurmdbd hosts. env var: SLURMDBD_HOSTS], )
+# ARG_OPTIONAL_SINGLE([slurmctld-hosts], , [comma seperated list of slurmctld hosts. env var: SLURMCTLD_HOSTS], )
+# ARG_OPTIONAL_SINGLE([db], , [database name. env var: MYSQL_DATABASE], )
+# ARG_OPTIONAL_SINGLE([dbhost], , [mariadb database hostname. env var: SLURMDBD_STORAGEHOST], )
+# ARG_OPTIONAL_SINGLE([dbuser], , [database user. env var: MYSQL_USER], )
+# ARG_OPTIONAL_SINGLE([dbpass], , [database password. env var: MYSQL_PASSWORD], )
+# ARG_OPTIONAL_BOOLEAN([init], , [regenerate configuration. env var: CONF_INIT], )
+# ARG_OPTIONAL_BOOLEAN([keygen], , [regenerate jwks.json and slurm.key. env var: KEYGEN], )
 # ARG_OPTIONAL_BOOLEAN([configless])
 # ARGBASH_SET_DELIM([ =])
 # ARG_OPTION_STACKING([getopt])
 # ARG_RESTRICT_VALUES([no-local-options])
-# ARG_HELP([<The general help message of my script>])
+# ARG_HELP([Containerized Slurm control plane])
 # ARGBASH_GO
 
 # [ <-- needed because of Argbash
@@ -57,31 +57,31 @@ CONFIGLESS=${CONFIGLESS:=$_arg_configless}
 check_config_file () {
 	# generate slurmdbd.conf if necessary
 	( [[ -f /etc/slurm/slurmdbd.conf ]] && [[ ${CONF_INIT} == off ]] ) || [[ ! ${SLURM_ROLE} == slurmdbd ]] \
-	|| ( /opt/entrypoint/bin/jinja2 \
+	|| ( /opt/local/bin/jinja2 \
 		-D SLURMDBD_STORAGEHOST=${SLURMDBD_STORAGEHOST:?SLURMDBD_STORAGEHOST is unset or null} \
 		-D MYSQL_USER=${MYSQL_USER:?MYSQL_USER is unset or null} \
 		-D MYSQL_PASSWORD=${MYSQL_PASSWORD:?MYSQL_PASSWORD is unset or null} \
 		-D MYSQL_DATABASE=${MYSQL_DATABASE:?MYSQL_DATABASE is unset or null} \
 		-D SLURMDBD_HOSTS=${SLURMDBD_HOSTS:?SLURMDBD_HOSTS is unset or null} \
-		/opt/entrypoint/slurmdbd.conf.j2 > /etc/slurm/slurmdbd.conf && chmod 0600 /etc/slurm/slurmdbd.conf )
+		/opt/local/slurmdbd.conf.j2 > /etc/slurm/slurmdbd.conf && chmod 0600 /etc/slurm/slurmdbd.conf )
 	
 	# generate slurm.conf if necessary
 	( [[ -f /etc/slurm/slurm.conf ]] && [[ ${CONF_INIT} == off ]] ) || [[ ! ${SLURM_ROLE} == slurmctld ]] \
-	|| /opt/entrypoint/bin/jinja2 \
+	|| /opt/local/bin/jinja2 \
 		-D SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:?SLURMCTLD_HOSTS is unset or null} \
 		-D CLUSTERNAME=${CLUSTERNAME:?CLUSTERNAME is unset or null} \
 		-D SLURMDBD_HOSTS=${SLURMDBD_HOSTS} \
 		-D CONFIGLESS=${CONFIGLESS} \
-		/opt/entrypoint/slurm.conf.j2 > /etc/slurm/slurm.conf
+		/opt/local/slurm.conf.j2 > /etc/slurm/slurm.conf
 	
 	# generate cgroup.conf if necessary
-	( [[ -f /etc/slurm/cgroup.conf ]] && [[ ${CONF_INIT} == off ]] ) || ! grep -q -E "^ProctrackType=proctrack/cgroup$" /etc/slurm/slurm.conf || /opt/entrypoint/bin/jinja2 /opt/entrypoint/cgroup.conf.j2 > /etc/slurm/cgroup.conf
+	( [[ -f /etc/slurm/cgroup.conf ]] && [[ ${CONF_INIT} == off ]] ) || ! grep -q -E "^ProctrackType=proctrack/cgroup$" /etc/slurm/slurm.conf || /opt/local/bin/jinja2 /opt/local/cgroup.conf.j2 > /etc/slurm/cgroup.conf
 
 	# generate jwks if necessary
 
 	for public_key in $( grep -h -E "^AuthAltParameters=" /etc/slurm/slurm*.conf | cut -c19- | tr ',' '\n' | grep -h -E "^jwks=" | cut -c6- ) ; do
 		private_key=${public_key}.priv
-		( [[ -f ${public_key} ]] && [[ ${KEYGEN} == off ]] ) || ( java -jar /opt/entrypoint/lib/json-web-key-generator.jar --type RSA --size 2048 --algorithm RS256 --idGenerator sha1 --keySet --output ${private_key} --pubKeyOutput ${public_key} && chmod 0644 ${public_key} && chmod 0600 ${private_key} )
+		( [[ -f ${public_key} ]] && [[ ${KEYGEN} == off ]] ) || ( java -jar /opt/local/lib/json-web-key-generator.jar --type RSA --size 2048 --algorithm RS256 --idGenerator sha1 --keySet --output ${private_key} --pubKeyOutput ${public_key} && chmod 0644 ${public_key} && chmod 0600 ${private_key} )
 	done
 
 	# generate /etc/slurm/slurm.key if necessary
