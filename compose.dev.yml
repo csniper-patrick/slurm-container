@@ -27,6 +27,7 @@ x-init-var: &init-var
   - MYSQL_DATABASE=slurm_acct_db
   - MYSQL_RANDOM_ROOT_PASSWORD=yes
   - SLURMDBD_STORAGEHOST=slurm-container-db
+  # - CONFIGLESS=on
 
 x-slurm-container: &slurm-container
   image: localhost/slurm:${TAG:-el9}
@@ -108,11 +109,15 @@ services:
   api:
     <<: *slurm-container
     command: --role slurmrestd
-    deploy:
-      mode: replicated
-      replicas: 2
     healthcheck:
       test: "nc -z localhost 6820"
+    depends_on:
+      master-1:
+        condition: service_healthy
+  
+  client:
+    <<: *slurm-container
+    command: --role sackd
     depends_on:
       master-1:
         condition: service_healthy

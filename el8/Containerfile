@@ -41,7 +41,7 @@ COPY --from=build-jwk-generator /build/target/json-web-key-generator-0.9-SNAPSHO
 # start slurmd via systemd
 COPY common/slurmd-extra.conf /etc/systemd/system/slurmd.service.d/
 RUN ln -sf /lib/systemd/system/multi-user.targßet /etc/systemd/system/default.target \
-	&& ln -s /usr/lib/systemd/system/{slurmd,sackd}.service /etc/systemd/system/multi-user.target.wants/ \
+	&& ln -s /usr/lib/systemd/system/slurmd.service /etc/systemd/system/multi-user.target.wants/ \
 	&& rm -f /etc/systemd/system/systemd-logind.service 
 
 # Expose port used by slurm
