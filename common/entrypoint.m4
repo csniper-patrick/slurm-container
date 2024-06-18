@@ -3,17 +3,17 @@
 # m4_ignore(
 echo "This is just a script template, not the script (yet) - pass it to 'argbash' to fix this." >&2
 exit 11  #)Created by argbash-init v2.10.0
-# ARG_OPTIONAL_SINGLE([clustername], , [name of the cluster, required for init. env var: CLUSTERNAME], )
-# ARG_OPTIONAL_SINGLE([role], , [slurmctld(default)|slurmdbd|slurmd|slurmrestd. env var: SLURM_ROLE], [slurmctld])
-# ARG_OPTIONAL_SINGLE([slurmdbd-hosts], , [comma separated list of slurmdbd hosts. env var: SLURMDBD_HOSTS], )
-# ARG_OPTIONAL_SINGLE([slurmctld-hosts], , [comma seperated list of slurmctld hosts. env var: SLURMCTLD_HOSTS], )
-# ARG_OPTIONAL_SINGLE([db], , [database name. env var: MYSQL_DATABASE], )
-# ARG_OPTIONAL_SINGLE([dbhost], , [mariadb database hostname. env var: SLURMDBD_STORAGEHOST], )
-# ARG_OPTIONAL_SINGLE([dbuser], , [database user. env var: MYSQL_USER], )
-# ARG_OPTIONAL_SINGLE([dbpass], , [database password. env var: MYSQL_PASSWORD], )
-# ARG_OPTIONAL_BOOLEAN([init], , [regenerate configuration. env var: CONF_INIT], )
-# ARG_OPTIONAL_BOOLEAN([keygen], , [regenerate jwks.json and slurm.key. env var: KEYGEN], )
-# ARG_OPTIONAL_BOOLEAN([configless])
+# ARG_OPTIONAL_SINGLE([clustername], , [name of the cluster, required for init.\nenv var: CLUSTERNAME], )
+# ARG_OPTIONAL_SINGLE([role], , [slurmctld(default)|slurmdbd|slurmd|slurmrestd|sackd.\nenv var: SLURM_ROLE], [slurmctld])
+# ARG_OPTIONAL_SINGLE([slurmdbd-hosts], , [comma separated list of slurmdbd hosts.\nenv var: SLURMDBD_HOSTS], )
+# ARG_OPTIONAL_SINGLE([slurmctld-hosts], , [comma seperated list of slurmctld hosts.\nenv var: SLURMCTLD_HOSTS], )
+# ARG_OPTIONAL_SINGLE([db], , [database name.\nenv var: MYSQL_DATABASE], )
+# ARG_OPTIONAL_SINGLE([dbhost], , [mariadb database hostname.\nenv var: SLURMDBD_STORAGEHOST], )
+# ARG_OPTIONAL_SINGLE([dbuser], , [database user.\nenv var: MYSQL_USER], )
+# ARG_OPTIONAL_SINGLE([dbpass], , [database password.\nenv var: MYSQL_PASSWORD], )
+# ARG_OPTIONAL_BOOLEAN([init], , [regenerate configuration.\nenv var: CONF_INIT], )
+# ARG_OPTIONAL_BOOLEAN([keygen], , [regenerate jwks.json and slurm.key.\nenv var: KEYGEN], )
+# ARG_OPTIONAL_BOOLEAN([configless], , [use configless mode. When enabled only slurm.key need to distributed to compute and client nodes.\nenv var: CONFIGLESS], )
 # ARGBASH_SET_DELIM([ =])
 # ARG_OPTION_STACKING([getopt])
 # ARG_RESTRICT_VALUES([no-local-options])
@@ -27,7 +27,7 @@ exit 11  #)Created by argbash-init v2.10.0
 
 # SLURM_ROLE
 SLURM_ROLE=${SLURM_ROLE:=$_arg_role}
-[[ ${SLURM_ROLE} == slurmctld ]] || [[ ${SLURM_ROLE} == slurmdbd ]] || [[ ${SLURM_ROLE} == slurmd ]] || [[ ${SLURM_ROLE} == slurmrestd ]] || ( echo Invalid role "${SLURM_ROLE}" && exit 128 )
+[[ ${SLURM_ROLE} == slurmctld ]] || [[ ${SLURM_ROLE} == slurmdbd ]] || [[ ${SLURM_ROLE} == slurmd ]] || [[ ${SLURM_ROLE} == slurmrestd ]] || [[ ${SLURM_ROLE} == sackd ]] || ( echo Invalid role "${SLURM_ROLE}" && exit 128 )
 
 # SLURMCTLD_HOSTS List
 SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:=$_arg_slurmctld_hosts}
@@ -66,9 +66,12 @@ check_config_file () {
 		/opt/local/slurmdbd.conf.j2 > /etc/slurm/slurmdbd.conf && chmod 0600 /etc/slurm/slurmdbd.conf )
 	
 	# generate slurm.conf if necessary
+	SLURMCTLD_PARAMETERS=""
+	[[ ${CONFIGLESS} == on ]] && SLURMCTLD_PARAMETERS+="enable_configless"
 	( [[ -f /etc/slurm/slurm.conf ]] && [[ ${CONF_INIT} == off ]] ) || [[ ! ${SLURM_ROLE} == slurmctld ]] \
 	|| /opt/local/bin/jinja2 \
 		-D SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:?SLURMCTLD_HOSTS is unset or null} \
+		-D SLURMCTLD_PARAMETERS=${SLURMCTLD_PARAMETERS} \
 		-D CLUSTERNAME=${CLUSTERNAME:?CLUSTERNAME is unset or null} \
 		-D SLURMDBD_HOSTS=${SLURMDBD_HOSTS} \
 		-D CONFIGLESS=${CONFIGLESS} \
@@ -116,13 +119,24 @@ elif [[ ${SLURM_ROLE} == slurmdbd ]] ; then
 	sudo -u ${run_user} slurmdbd -D -s -v ${SLURMDBD_OPTIONS}
 elif [[ ${SLURM_ROLE} == slurmd ]] ; then
 	# Role slurmd
-	# slurmd -D -v -Z
+	# setting environment
+	SLURMD_OPTIONS="-Z "
+	[[ ${CONFIGLESS} == on ]] && SLURMD_OPTIONS+="${SLURMCTLD_HOSTS:+--conf-server ${SLURMCTLD_HOSTS}}"
+	cat > /etc/sysconfig/slurmd <<-EOF
+		SLURMD_OPTIONS="${SLURMD_OPTIONS}"
+		EOF
 	exec /sbin/init
 elif [[ ${SLURM_ROLE} == slurmrestd ]] ; then
 	# Role slurmrestd
 	export SLURMRESTD_SECURITY=DISABLE_USER_CHECK
 	export SLURM_JWT=daemon
 	slurmrestd -v $SLURMRESTD_OPTIONS 0.0.0.0:6820
+elif [[ ${SLURM_ROLE} == sackd ]] ; then
+	# Role sackd
+	[[ -d /run/slurm/conf ]] || mkdir -pv /run/slurm/conf
+	SACKD_OPTIONS="-D -v "
+	[[ ${CONFIGLESS} == on ]] && SACKD_OPTIONS+="${SLURMCTLD_HOSTS:+--conf-server ${SLURMCTLD_HOSTS}}"
+	sackd ${SACKD_OPTIONS}
 fi
 
 # ^^^  TERMINATE YOUR CODE BEFORE THE BOTTOM ARGBASH MARKER  ^^^
