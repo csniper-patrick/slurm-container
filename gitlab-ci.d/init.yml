@@ -12,8 +12,8 @@ generate-pipeline:
       for TAG in ${EXTRA_TAGS} ; do
         (cd slurm; git checkout ${TAG};)
         slurm_ver=$(grep "Version:" slurm/slurm.spec | head -n 1 | awk '{print $2}' | cut -d. -f-2 )
-        echo jinja2 gitlab-ci.d/container-build.yml.j2 ${PIPELINE_CONF} --format=json -D slurm_ver=${slurm_ver} -D GITTAG=${TAG}
-        echo jinja2 gitlab-ci.d/container-tag.yml.j2 ${PIPELINE_CONF} --format=json -D slurm_ver=${slurm_ver} -D YYYYMM=${YYYYMM} -D GITTAG=${TAG}
+        jinja2 gitlab-ci.d/container-build.yml.j2 ${PIPELINE_CONF} --format=json -D slurm_ver=${slurm_ver} -D GITTAG=${TAG} >> gitlab-ci.d/container-build.yml
+        jinja2 gitlab-ci.d/container-tag.yml.j2 ${PIPELINE_CONF} --format=json -D slurm_ver=${slurm_ver} -D YYYYMM=${YYYYMM} -D GITTAG=${TAG} >> gitlab-ci.d/container-tag.yml
       done
   artifacts:
     when: on_success

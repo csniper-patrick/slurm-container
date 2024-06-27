@@ -1,7 +1,7 @@
 {% for distro in distros %}
 {%- set tag = "${CI_REGISTRY_IMAGE}/slurm:${CI_COMMIT_SHORT_SHA}-" + slurm_ver + "-" + distro -%}
 {%- set containerfile = distro + "/Containerfile" -%}
-build-{{ distro }}-amd64-image:
+build-{{ slurm_ver }}-{{ distro }}-amd64-image:
   stage: build
   hooks:
       pre_get_sources_script:
@@ -10,9 +10,12 @@ build-{{ distro }}-amd64-image:
   before_script:
     - podman login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" ${CI_REGISTRY}
   script:
+{% if GITTAG is defined %}
+  - ( cd slurm; git checkout {{ GITTAG }}; )
+{% endif %}
   - ( podman pull {{ tag }}-amd64 ) || ( podman build --squash -f {{ containerfile }} -t {{ tag }}-amd64 . && podman push {{ tag }}-amd64 )
 
-build-{{ distro }}-arm64-image:
+build-{{ slurm_ver }}-{{ distro }}-arm64-image:
   stage: build
   timeout: 3h
   retry: 2
@@ -23,6 +26,9 @@ build-{{ distro }}-arm64-image:
   before_script:
     - podman login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" ${CI_REGISTRY}
   script:
+{% if GITTAG is defined %}
+  - ( cd slurm; git checkout {{ GITTAG }}; )
+{% endif %}
   - ( podman pull {{ tag }}-arm64 ) || ( podman build --squash -f {{ containerfile }} -t {{ tag }}-arm64 . && podman push {{ tag }}-arm64 )
   tags:
     - arm64
