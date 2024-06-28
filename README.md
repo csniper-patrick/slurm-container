@@ -2,6 +2,8 @@
 
 This project builds images that allow users to run Slurm and SlurmDB controllers in container/Kubernetes environments. The cluster is required to use slurm's own authentication mechanism instead of munge (ie `AuthType=auth/slurm`). 
 
+[![pipeline status](https://gitlab.com/CSniper/slurm-container/badges/main/pipeline.svg)](https://gitlab.com/CSniper/slurm-container/-/commits/main)
+
 ## Getting started
 
 Clone the project which contains some examples. Image has been published to dockerhub.
