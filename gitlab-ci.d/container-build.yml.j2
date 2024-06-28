@@ -12,7 +12,7 @@ build-{{ slurm_ver }}-{{ distro }}-amd64-image:
   script:
 {% if GITTAG is defined %}
     - dnf -y install git
-    - ( cd slurm; git checkout {{ GITTAG }}; )
+    - ( cd slurm; git fetch --tags; git checkout ${GITTAG}; )
 {% endif %}
     - ( podman pull {{ tag }}-amd64 ) || ( podman build --squash -f {{ containerfile }} -t {{ tag }}-amd64 . && podman push {{ tag }}-amd64 )
 
