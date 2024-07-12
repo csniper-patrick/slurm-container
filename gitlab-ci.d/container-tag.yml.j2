@@ -1,34 +1,6 @@
 {% for tag in tags %}
 {%- set source_tag = "${CI_REGISTRY_IMAGE}/slurm:${CI_COMMIT_SHORT_SHA}-" + slurm_ver + "-" + tag.distro -%}
 {% if tag.name is not none %}
-{%- set latest_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + tag.name -%}
-{%- set yyyymm_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + tag.name + "-" + YYYYMM -%}
-{% else %}
-{%- set latest_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver -%}
-{%- set yyyymm_tag = "${CI_REGISTRY_IMAGE}/slurm:" + slurm_ver + "-" + YYYYMM -%}
-{% endif %}
-tag-{{ slurm_ver }}-{{ tag.name | default("default", true) }}-image:
-  stage: deploy
-  image: quay.io/podman/stable
-  before_script:
-    - podman login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" ${CI_REGISTRY}
-  script:
-    - podman pull {{ source_tag }}-amd64
-    - podman pull {{ source_tag }}-arm64
-    - podman tag {{ source_tag }}-amd64 {{ latest_tag }}-amd64
-    - podman tag {{ source_tag }}-arm64 {{ latest_tag }}-arm64
-    - podman tag {{ source_tag }}-amd64 {{ yyyymm_tag }}-amd64
-    - podman tag {{ source_tag }}-arm64 {{ yyyymm_tag }}-arm64
-    - podman manifest create {{ latest_tag }} {{ latest_tag }}-amd64 {{ latest_tag }}-arm64
-    - podman manifest create {{ yyyymm_tag }} {{ yyyymm_tag }}-amd64 {{ yyyymm_tag }}-arm64
-    - podman manifest push --all {{ latest_tag }}
-    - podman manifest push --all {{ yyyymm_tag }}
-
-{% endfor %}
-
-{% for tag in tags %}
-{%- set source_tag = "${CI_REGISTRY_IMAGE}/slurm:${CI_COMMIT_SHORT_SHA}-" + slurm_ver + "-" + tag.distro -%}
-{% if tag.name is not none %}
 {%- set latest_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-" + tag.name -%}
 {%- set yyyymm_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-" + tag.name + "-" + YYYYMM -%}
 {% else %}

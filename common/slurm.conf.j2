@@ -165,6 +165,10 @@ SlurmdLogFile=/var/log/slurmd.log
 AuthType=auth/slurm
 CredType=cred/slurm
 AuthInfo=use_client_ids
+
+# Enable nss_slurm
+LaunchParameters=enable_nss_slurm
+
 # Enable RS256 JWT With public key set
 AuthAltTypes=auth/jwt
 AuthAltParameters=jwks=/etc/slurm/jwks.json
