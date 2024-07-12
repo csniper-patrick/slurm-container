@@ -2,11 +2,9 @@
 
 This project builds images that allow users to run Slurm and SlurmDB controllers in container/Kubernetes environments. The cluster is required to use slurm's own authentication mechanism instead of munge (ie `AuthType=auth/slurm`). 
 
-[![pipeline status](https://gitlab.com/CSniper/slurm-container/badges/main/pipeline.svg)](https://gitlab.com/CSniper/slurm-container/-/commits/main)
-
 ## Getting started
 
-Clone the project which contains some examples. Image has been published to dockerhub.
+Clone the project which contains some examples. Container image has been published to dockerhub.
 ```
 git clone --recursive-submodule https://gitlab.com/CSniper/slurm-container.git
 cd slurm-container
@@ -60,11 +58,11 @@ If you use config-less mode, you need to at least sync `/etc/slurm/slurm.key` to
 
 The compose.yml file included in the repository creates a very simple cluster with slurmdbd and slurmrestd enabled. 
 ```
-podman compose -f compose.yml up -d --force-recreate
+podman compose up -d --force-recreate
 ```
 In the 4 slurm containers, slurmd container is required to run in systemd mode. Other containers simply start the process in the foreground.
 
-### More complicated cluster (`./compose.dev.yml`)
+### More complicated demo cluster (`./compose.dev.yml`)
 ![demo cluster](./imgs/ha-compose.drawio.svg)  
 
 This compose file expects a locally built image, and starts the container cluster with 2 daemons for every service, plus one api host (slurmrestd) and one submission client (sackd)
