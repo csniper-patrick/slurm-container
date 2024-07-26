@@ -17,7 +17,7 @@ root@slurm-master# mkdir -pv /opt/slurm/etc-slurm /opt/slurm/spool-slurmctld
 root@slurm-master# podman run --it --rm --name slurmctld --hostname slurm-master \
 >	-v /opt/slurm/spool-slurmctld:/var/spool/slurmctld:Z \
 >	-v /opt/slurm/etc-slurm:/etc/slurm:Z --net=hosts --privileged -d \
->	docker.io/csniper/slurm:23.11 --role slurmctld \
+>	docker.io/csniper/slurm:24.05 --role slurmctld \
 >	--clustername demo --slurmctld-hosts slurm-master
 ```
 This generates the necessary configuration and starts the slurmctld. The slurm configuration files are located under `/opt/slurm/etc-slurm`. You need to distribute these files to compute nodes/slurmd hosts under `/etc/slurm/`. By default this cluster uses dynamic node, so you need to start slurmd with "-Z" option. or you can modify the generated slurm.conf to give it a list of nodes. 
@@ -27,7 +27,7 @@ After the initial run, you can remove `clustername` and `slurmctld-hosts` option
 root@slurm-master# podman run --it --rm --name slurmctld --hostname slurm-master \
 >	-v /opt/slurm/spool-slurmctld:/var/spool/slurmctld:Z \
 >	-v /opt/slurm/etc-slurm:/etc/slurm:Z --net=hosts --privileged -d \
->	docker.io/csniper/slurm:23.11 --role slurmctld 
+>	docker.io/csniper/slurm:24.05 --role slurmctld 
 ```
 If you make changes to slurm.conf, make sure you sync the file across the cluster, and then either restart the container or run `scontrol reconfigure` . 
 
@@ -102,5 +102,5 @@ Usage: /opt/local/bin/entrypoint [--clustername <arg>] [--role <arg>] [--slurmdb
 ```
 
 ## Background
-There had been attempts to containerize Slurm's control plane (ie. slurmdbd and slurmctld), even running it on k8s for reliability and availability. With auth/munge being the only authentication mechanism available between Slurm daemons, the control plane containers are almost required to be authenticated the same way the login/submission and compute nodes are. This situation makes it difficult to build a generic image portable and tested across different Slurm sites. This situation changed with the release of slurm-23.11. Slurm's authentication plugin (`AuthType=auth/slurm`) is introduced in this major release, with this the control plane containers received and trusted the user information from the submission host, and hence they are not required to be authenticated. In addition, munged is not required to run alongside slurm daemons, so each container could focus on running only one of the slurm daemons (slurmctld/slurmdbd/slurmrestd/slurmd).  
+There had been attempts to containerize Slurm's control plane (ie. slurmdbd and slurmctld), even running it on k8s for reliability and availability. With auth/munge being the only authentication mechanism available between Slurm daemons, the control plane containers are almost required to be authenticated the same way the login/submission and compute nodes are. This situation makes it difficult to build a generic image portable and tested across different Slurm sites. This situation changed with the release of slurm-24.05. Slurm's authentication plugin (`AuthType=auth/slurm`) is introduced in this major release, with this the control plane containers received and trusted the user information from the submission host, and hence they are not required to be authenticated. In addition, munged is not required to run alongside slurm daemons, so each container could focus on running only one of the slurm daemons (slurmctld/slurmdbd/slurmrestd/slurmd).  
 
