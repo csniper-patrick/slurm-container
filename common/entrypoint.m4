@@ -71,10 +71,10 @@ check_config_file () {
 	( [[ -f /etc/slurm/slurm.conf ]] && [[ ${CONF_INIT} == off ]] ) || [[ ! ${SLURM_ROLE} == slurmctld ]] \
 	|| /opt/local/bin/jinja2 \
 		-D SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:?SLURMCTLD_HOSTS is unset or null} \
-		-D SLURMCTLD_PARAMETERS=${SLURMCTLD_PARAMETERS} \
 		-D CLUSTERNAME=${CLUSTERNAME:?CLUSTERNAME is unset or null} \
-		-D SLURMDBD_HOSTS=${SLURMDBD_HOSTS} \
-		-D CONFIGLESS=${CONFIGLESS} \
+		${SLURMCTLD_PARAMETERS:+-D SLURMCTLD_PARAMETERS=${SLURMCTLD_PARAMETERS}} \
+		${SLURMDBD_HOSTS:+-D SLURMDBD_HOSTS=${SLURMDBD_HOSTS}} \
+		${CONFIGLESS:+-D CONFIGLESS=${CONFIGLESS}} \
 		/opt/local/slurm.conf.j2 > /etc/slurm/slurm.conf
 	
 	# generate cgroup.conf if necessary
