@@ -71,10 +71,10 @@ check_config_file () {
 	( [[ -f /etc/slurm/slurm.conf ]] && [[ ${CONF_INIT} == off ]] ) || [[ ! ${SLURM_ROLE} == slurmctld ]] \
 	|| /opt/local/bin/jinja2 \
 		-D SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:?SLURMCTLD_HOSTS is unset or null} \
-		-D SLURMCTLD_PARAMETERS=${SLURMCTLD_PARAMETERS} \
 		-D CLUSTERNAME=${CLUSTERNAME:?CLUSTERNAME is unset or null} \
-		-D SLURMDBD_HOSTS=${SLURMDBD_HOSTS} \
-		-D CONFIGLESS=${CONFIGLESS} \
+		${SLURMCTLD_PARAMETERS:+-D SLURMCTLD_PARAMETERS=${SLURMCTLD_PARAMETERS}} \
+		${SLURMDBD_HOSTS:+-D SLURMDBD_HOSTS=${SLURMDBD_HOSTS}} \
+		${CONFIGLESS:+-D CONFIGLESS=${CONFIGLESS}} \
 		/opt/local/slurm.conf.j2 > /etc/slurm/slurm.conf
 	
 	# generate cgroup.conf if necessary
@@ -89,6 +89,9 @@ check_config_file () {
 
 	# generate /etc/slurm/slurm.key if necessary
 	( [[ -f /etc/slurm/slurm.key ]] && [[ ${KEYGEN} == off ]] ) || ( dd if=/dev/random of=/etc/slurm/slurm.key bs=1024 count=1 && chmod 0600 /etc/slurm/slurm.key )
+
+	# generate /etc/slurm/slurm.jwks if necessary
+	( [[ -f /etc/slurm/slurm.jwks ]] && [[ ${KEYGEN} == off ]] ) || ( java -jar /opt/local/lib/json-web-key-generator.jar --type oct --size 2048 --algorithm HS256 --idGenerator sha1 --keySet --output /etc/slurm/slurm.jwks && chmod 0600 /etc/slurm/slurm.jwks )
 
 	# ensure correct directory ownership
 	slurm_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurm*.conf | cut -c11- | head -n1)
