@@ -90,6 +90,9 @@ check_config_file () {
 	# generate /etc/slurm/slurm.key if necessary
 	( [[ -f /etc/slurm/slurm.key ]] && [[ ${KEYGEN} == off ]] ) || ( dd if=/dev/random of=/etc/slurm/slurm.key bs=1024 count=1 && chmod 0600 /etc/slurm/slurm.key )
 
+	# generate /etc/slurm/slurm.jwks if necessary
+	( [[ -f /etc/slurm/slurm.jwks ]] && [[ ${KEYGEN} == off ]] ) || ( java -jar /opt/local/lib/json-web-key-generator.jar --type oct --size 2048 --algorithm HS256 --idGenerator sha1 --keySet --output /etc/slurm/slurm.jwks && chmod 0600 /etc/slurm/slurm.jwks )
+
 	# ensure correct directory ownership
 	slurm_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurm*.conf | cut -c11- | head -n1)
 	slurm_group=$(id -gn ${slurm_user})
