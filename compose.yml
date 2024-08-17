@@ -33,6 +33,7 @@ x-slurm-container: &slurm-container
   volumes: *common-volumes
   privileged: true
   environment: *init-var
+  restart: on-failure:10
 
 services:
   mariadb:

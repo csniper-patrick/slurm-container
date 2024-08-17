@@ -37,6 +37,7 @@ x-slurm-container: &slurm-container
   volumes: *common-volumes
   privileged: true
   environment: *init-var
+  restart: on-failure:10
 
 services:
   mariadb:
@@ -69,8 +70,6 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
-      slurmdb-1:
-        condition: service_healthy
 
   master-1:
     <<: *slurm-container
@@ -91,7 +90,7 @@ services:
     healthcheck:
       test: "nc -z localhost 6817"
     depends_on:
-      master-1:
+      slurmdb-1:
         condition: service_healthy
 
   compute:
