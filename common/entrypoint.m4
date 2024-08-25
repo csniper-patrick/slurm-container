@@ -112,37 +112,43 @@ check_config_file () {
 
 set -x
 
-if [[ ${SLURM_ROLE} == slurmctld ]] ; then
-	# Role slurmctld
-	check_config_file
-	run_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurm.conf | cut -c11- | head -n1)
-	sudo -u ${run_user} slurmctld -D -v $SLURMCTLD_OPTIONS
-elif [[ ${SLURM_ROLE} == slurmdbd ]] ; then
-	# Role slurmdbd
-	check_config_file
-	run_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurmdbd.conf | cut -c11- | head -n1)
-	sudo -u ${run_user} slurmdbd -D -s -v ${SLURMDBD_OPTIONS}
-elif [[ ${SLURM_ROLE} == slurmd ]] ; then
-	# Role slurmd
-	# setting environment
-	SLURMD_OPTIONS="-Z "
-	[[ ${CONFIGLESS} == on ]] && SLURMD_OPTIONS+="${SLURMCTLD_HOSTS:+--conf-server ${SLURMCTLD_HOSTS}}"
-	cat > /etc/sysconfig/slurmd <<-EOF
-		SLURMD_OPTIONS="${SLURMD_OPTIONS}"
-		EOF
-	exec /sbin/init
-elif [[ ${SLURM_ROLE} == slurmrestd ]] ; then
-	# Role slurmrestd
-	export SLURMRESTD_SECURITY=DISABLE_USER_CHECK
-	export SLURM_JWT=daemon
-	slurmrestd -v $SLURMRESTD_OPTIONS 0.0.0.0:6820
-elif [[ ${SLURM_ROLE} == sackd ]] ; then
-	# Role sackd
-	[[ -d /run/slurm/conf ]] || mkdir -pv /run/slurm/conf
-	SACKD_OPTIONS="-D -v "
-	[[ ${CONFIGLESS} == on ]] && SACKD_OPTIONS+="${SLURMCTLD_HOSTS:+--conf-server ${SLURMCTLD_HOSTS}}"
-	sackd ${SACKD_OPTIONS}
-fi
+case "${SLURM_ROLE}" in
+    slurmctld)        
+		# Role slurmctld
+		check_config_file
+		run_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurm.conf | cut -c11- | head -n1)
+		sudo -u ${run_user} slurmctld -D -v $SLURMCTLD_OPTIONS
+        ;;
+    slurmdbd)
+		# Role slurmdbd
+		check_config_file
+		run_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurmdbd.conf | cut -c11- | head -n1)
+		sudo -u ${run_user} slurmdbd -D -s -v ${SLURMDBD_OPTIONS}
+        ;;
+    slurmd)
+		# Role slurmd
+		# setting environment
+		SLURMD_OPTIONS="-Z "
+		[[ ${CONFIGLESS} == on ]] && SLURMD_OPTIONS+="${SLURMCTLD_HOSTS:+--conf-server ${SLURMCTLD_HOSTS}}"
+		cat > /etc/sysconfig/slurmd <<-EOF
+			SLURMD_OPTIONS="${SLURMD_OPTIONS}"
+			EOF
+		exec /sbin/init
+        ;;
+    slurmrestd)
+		# Role slurmrestd
+		export SLURMRESTD_SECURITY=DISABLE_USER_CHECK
+		export SLURM_JWT=daemon
+		slurmrestd -v $SLURMRESTD_OPTIONS 0.0.0.0:6820
+        ;;
+    sackd)
+		# Role sackd
+		[[ -d /run/slurm/conf ]] || mkdir -pv /run/slurm/conf
+		SACKD_OPTIONS="-D -v "
+		[[ ${CONFIGLESS} == on ]] && SACKD_OPTIONS+="${SLURMCTLD_HOSTS:+--conf-server ${SLURMCTLD_HOSTS}}"
+		sackd ${SACKD_OPTIONS}
+        ;;
+esac
 
 # ^^^  TERMINATE YOUR CODE BEFORE THE BOTTOM ARGBASH MARKER  ^^^
 
