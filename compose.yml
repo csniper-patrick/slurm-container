@@ -33,6 +33,7 @@ x-slurm-container: &slurm-container
   volumes: *common-volumes
   privileged: true
   environment: *init-var
+  restart: on-failure:10
 
 services:
   mariadb:
@@ -50,7 +51,10 @@ services:
     container_name: slurm-container-slurmdb
     command: --role slurmdbd
     healthcheck:
-      test: "nc -z localhost 6819"
+      test: ["CMD-SHELL", "until nc -z localhost 6819  ; do sleep 10 ; done"]
+      timeout: 72h
+      interval: 5m
+      start_period: 5s
     depends_on:
       mariadb:
         condition: service_healthy
@@ -61,7 +65,10 @@ services:
     container_name: slurm-container-master
     command: --role slurmctld
     healthcheck:
-      test: "nc -z localhost 6817"
+      test: ["CMD-SHELL", "until nc -z localhost 6817  ; do sleep 10 ; done"]
+      timeout: 72h
+      interval: 5m
+      start_period: 5s
     depends_on:
       slurmdb:
         condition: service_healthy
@@ -70,7 +77,10 @@ services:
     <<: *slurm-container
     command: --role slurmd
     healthcheck:
-      test: "nc -z localhost 6818"
+      test: ["CMD-SHELL", "until nc -z localhost 6818  ; do sleep 10 ; done"]
+      timeout: 72h
+      interval: 5m
+      start_period: 5s
     depends_on:
       master:
         condition: service_healthy
@@ -79,7 +89,10 @@ services:
     <<: *slurm-container
     command: --role slurmrestd
     healthcheck:
-      test: "nc -z localhost 6820"
+      test: ["CMD-SHELL", "until nc -z localhost 6820  ; do sleep 10 ; done"]
+      timeout: 72h
+      interval: 5m
+      start_period: 5s
     depends_on:
       master:
         condition: service_healthy
