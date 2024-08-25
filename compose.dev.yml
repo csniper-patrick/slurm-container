@@ -71,6 +71,7 @@ services:
       test: ["CMD-SHELL", "until nc -z localhost 6819  ; do sleep 10 ; done"]
       timeout: 72h
       interval: 5m
+      start_period: 5s
     depends_on:
       mariadb:
         condition: service_healthy
@@ -84,6 +85,7 @@ services:
       test: ["CMD-SHELL", "until nc -z localhost 6817  ; do sleep 10 ; done"]
       timeout: 72h
       interval: 5m
+      start_period: 5s
     depends_on:
       slurmdb-1:
         condition: service_healthy
@@ -97,6 +99,7 @@ services:
       test: ["CMD-SHELL", "until nc -z localhost 6817  ; do sleep 10 ; done"]
       timeout: 72h
       interval: 5m
+      start_period: 5s
     depends_on:
       slurmdb-1:
         condition: service_healthy
@@ -111,6 +114,7 @@ services:
       test: ["CMD-SHELL", "until nc -z localhost 6818  ; do sleep 10 ; done"]
       timeout: 72h
       interval: 5m
+      start_period: 5s
     depends_on:
       master-1:
         condition: service_healthy
@@ -122,6 +126,7 @@ services:
       test: ["CMD-SHELL", "until nc -z localhost 6820  ; do sleep 10 ; done"]
       timeout: 72h
       interval: 5m
+      start_period: 5s
     depends_on:
       master-1:
         condition: service_healthy
