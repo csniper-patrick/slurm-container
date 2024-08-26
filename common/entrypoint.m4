@@ -27,7 +27,7 @@ exit 11  #)Created by argbash-init v2.10.0
 
 # SLURM_ROLE
 SLURM_ROLE=${SLURM_ROLE:=$_arg_role}
-[[ ${SLURM_ROLE} == slurmctld ]] || [[ ${SLURM_ROLE} == slurmdbd ]] || [[ ${SLURM_ROLE} == slurmd ]] || [[ ${SLURM_ROLE} == slurmrestd ]] || [[ ${SLURM_ROLE} == sackd ]] || ( echo Invalid role "${SLURM_ROLE}" && exit 128 )
+[[ ${SLURM_ROLE} == slurmctld ]] || [[ ${SLURM_ROLE} == slurmdbd ]] || [[ ${SLURM_ROLE} == slurmd ]] || [[ ${SLURM_ROLE} == slurmrestd ]] || [[ ${SLURM_ROLE} == sackd ]] || [[ ${SLURM_ROLE} == init-only ]] || ( echo Invalid role "${SLURM_ROLE}" && exit 128 )
 
 # SLURMCTLD_HOSTS List
 SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:=$_arg_slurmctld_hosts}
@@ -54,42 +54,61 @@ KEYGEN=${KEYGEN:=$_arg_keygen}
 CONFIGLESS=${CONFIGLESS:=$_arg_configless}
 [[ ${CONFIGLESS} == on ]] || [[ ${CONFIGLESS} == off ]] || ( echo CONFIGLESS must be on/off && exit 128 )
 
-check_config_file () {
-	# generate slurmdbd.conf if necessary
-	( [[ -f /etc/slurm/slurmdbd.conf ]] && [[ ${CONF_INIT} == off ]] ) || [[ ! ${SLURM_ROLE} == slurmdbd ]] \
-	|| ( /opt/local/bin/jinja2 \
+generate_slurmdbd_conf () {
+	/opt/local/bin/jinja2 \
 		-D SLURMDBD_STORAGEHOST=${SLURMDBD_STORAGEHOST:?SLURMDBD_STORAGEHOST is unset or null} \
 		-D MYSQL_USER=${MYSQL_USER:?MYSQL_USER is unset or null} \
 		-D MYSQL_PASSWORD=${MYSQL_PASSWORD:?MYSQL_PASSWORD is unset or null} \
 		-D MYSQL_DATABASE=${MYSQL_DATABASE:?MYSQL_DATABASE is unset or null} \
 		-D SLURMDBD_HOSTS=${SLURMDBD_HOSTS:?SLURMDBD_HOSTS is unset or null} \
-		/opt/local/slurmdbd.conf.j2 > /etc/slurm/slurmdbd.conf && chmod 0600 /etc/slurm/slurmdbd.conf )
-	
-	# generate slurm.conf if necessary
+		/opt/local/slurmdbd.conf.j2 > /etc/slurm/slurmdbd.conf && chmod 0600 /etc/slurm/slurmdbd.conf
+}
+
+generate_slurm_conf () {
 	SLURMCTLD_PARAMETERS=""
 	[[ ${CONFIGLESS} == on ]] && SLURMCTLD_PARAMETERS+="enable_configless"
-	( [[ -f /etc/slurm/slurm.conf ]] && [[ ${CONF_INIT} == off ]] ) || [[ ! ${SLURM_ROLE} == slurmctld ]] \
-	|| /opt/local/bin/jinja2 \
+	/opt/local/bin/jinja2 \
 		-D SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:?SLURMCTLD_HOSTS is unset or null} \
 		-D CLUSTERNAME=${CLUSTERNAME:?CLUSTERNAME is unset or null} \
 		${SLURMCTLD_PARAMETERS:+-D SLURMCTLD_PARAMETERS=${SLURMCTLD_PARAMETERS}} \
 		${SLURMDBD_HOSTS:+-D SLURMDBD_HOSTS=${SLURMDBD_HOSTS}} \
 		${CONFIGLESS:+-D CONFIGLESS=${CONFIGLESS}} \
 		/opt/local/slurm.conf.j2 > /etc/slurm/slurm.conf
+}
+
+generate_cgroup_conf () {
+	! grep -q -E "^ProctrackType=proctrack/cgroup$" /etc/slurm/slurm.conf || /opt/local/bin/jinja2 /opt/local/cgroup.conf.j2 > /etc/slurm/cgroup.conf
+}
+
+keygen_RS256 () {
+	java -jar /opt/local/lib/json-web-key-generator.jar --type RSA --size 2048 --algorithm RS256 --idGenerator sha1 --keySet --output ${1:?missing private key path} --pubKeyOutput ${2:?missing public key path} && chmod 0644 ${2} && chmod 0600 ${1}
+}
+
+keygen_HS264 () {
+	java -jar /opt/local/lib/json-web-key-generator.jar --type oct --size 2048 --algorithm HS256 --idGenerator sha1 --keySet --output ${1?missing key path} && chmod 0600 ${1?missing key path}
+}
+
+check_config_file () {
+	# generate slurmdbd.conf if necessary
+	( [[ -f /etc/slurm/slurmdbd.conf ]] && [[ ${CONF_INIT} == off ]] ) || [[ ! ${SLURM_ROLE} == slurmdbd ]] \
+	|| generate_slurmdbd_conf
+	
+	# generate slurm.conf if necessary
+	( [[ -f /etc/slurm/slurm.conf ]] && [[ ${CONF_INIT} == off ]] ) || [[ ! ${SLURM_ROLE} == slurmctld ]] \
+	|| generate_slurm_conf
 	
 	# generate cgroup.conf if necessary
-	( [[ -f /etc/slurm/cgroup.conf ]] && [[ ${CONF_INIT} == off ]] ) || ! grep -q -E "^ProctrackType=proctrack/cgroup$" /etc/slurm/slurm.conf || /opt/local/bin/jinja2 /opt/local/cgroup.conf.j2 > /etc/slurm/cgroup.conf
+	( [[ -f /etc/slurm/cgroup.conf ]] && [[ ${CONF_INIT} == off ]] ) || generate_cgroup_conf
 
 	# generate jwks if necessary
-
-	for public_key in $( grep -h -E "^AuthAltParameters=" /etc/slurm/slurm*.conf | cut -c19- | tr ',' '\n' | grep -h -E "^jwks=" | cut -c6- ) ; do
+	for public_key in $( grep -h -E "^AuthAltParameters=" /etc/slurm/slurm*.conf | sort | uniq | cut -c19- | tr ',' '\n' | grep -h -E "^jwks=" | cut -c6- ) ; do
 		private_key=${public_key}.priv
-		( [[ -f ${public_key} ]] && [[ ${KEYGEN} == off ]] ) || ( java -jar /opt/local/lib/json-web-key-generator.jar --type RSA --size 2048 --algorithm RS256 --idGenerator sha1 --keySet --output ${private_key} --pubKeyOutput ${public_key} && chmod 0644 ${public_key} && chmod 0600 ${private_key} )
+		( [[ -f ${public_key} ]] && [[ ${KEYGEN} == off ]] ) || keygen_RS256 "${private_key}" "${public_key}"
 	done
 
 	# generate /etc/slurm/slurm.jwks if necessary
 	( ( [[ -f /etc/slurm/slurm.jwks ]] || [[ -f /etc/slurm/slurm.key ]] ) && [[ ${KEYGEN} == off ]] ) \
-	|| ( java -jar /opt/local/lib/json-web-key-generator.jar --type oct --size 2048 --algorithm HS256 --idGenerator sha1 --keySet --output /etc/slurm/slurm.jwks && chmod 0600 /etc/slurm/slurm.jwks )
+	|| keygen_HS264 /etc/slurm/slurm.jwks
 
 	# generate /etc/slurm/slurm.key if necessary
 	( [[ -f /etc/slurm/slurm.key ]] && [[ ${KEYGEN} == off ]] ) \
@@ -147,6 +166,28 @@ case "${SLURM_ROLE}" in
 		SACKD_OPTIONS="-D -v "
 		[[ ${CONFIGLESS} == on ]] && SACKD_OPTIONS+="${SLURMCTLD_HOSTS:+--conf-server ${SLURMCTLD_HOSTS}}"
 		sackd ${SACKD_OPTIONS}
+        ;;
+	init-only)
+		# Role init-only
+		DATE=$(date +"%F_%H%M%S")
+		# regenerate slurmdbd.conf
+		[[ -f /etc/slurm/slurmdbd.conf ]] && mv -v /etc/slurm/slurmdbd.conf /etc/slurm/slurmdbd.conf.${DATE}
+		[[ -n ${SLURMDBD_HOSTS} ]] && generate_slurmdbd_conf
+		# regenerate slurm.conf and cgroup.conf
+		[[ -f /etc/slurm/slurm.conf ]] && mv -v /etc/slurm/slurm.conf /etc/slurm/slurm.conf.${DATE}
+		[[ -f /etc/slurm/cgroup.conf ]] && mv -v /etc/slurm/cgroup.conf /etc/slurm/cgroup.conf.${DATE}
+		[[ -n ${SLURMCTLD_HOSTS} ]] && generate_slurm_conf && generate_cgroup_conf 
+		# regenerate keys
+		for public_key in $( grep -h -E "^AuthAltParameters=" /etc/slurm/slurm*.conf | sort | uniq | cut -c19- | tr ',' '\n' | grep -h -E "^jwks=" | cut -c6- ) ; do
+			[[ -f ${public_key} ]] && mv -v ${public_key} ${public_key}.${DATE}
+			[[ -f ${public_key}.priv ]] && mv -v ${public_key}.priv ${public_key}.priv.${DATE}
+			keygen_RS256 "${public_key}.priv" "${public_key}"
+		done
+
+		[[ -f /etc/slurm/slurm.jwks ]] && mv -v /etc/slurm/slurm.jwks /etc/slurm/slurm.jwks.${DATE}
+		keygen_HS264 /etc/slurm/slurm.jwks
+		[[ -f /etc/slurm/slurm.key ]] && mv -v /etc/slurm/slurm.key /etc/slurm/slurm.key.${DATE}
+		dd if=/dev/random of=/etc/slurm/slurm.key bs=1024 count=1 && chmod 0600 /etc/slurm/slurm.key
         ;;
 esac
 
