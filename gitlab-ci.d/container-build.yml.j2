@@ -3,6 +3,8 @@
 {%- set containerfile = distro + "/Containerfile" -%}
 build-{{ slurm_ver }}-{{ distro }}-amd64-image:
   stage: build
+  timeout: 3h
+  retry: 2
   hooks:
       pre_get_sources_script:
       - umask 0022
