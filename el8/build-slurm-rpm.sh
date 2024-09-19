@@ -14,7 +14,7 @@ export LDFLAGS="$(pkg-config --libs-only-L --keep-system-libs nvidia-ml-12.6) ${
 ver=$(grep "Version:" slurm-src/slurm.spec | head -n 1 | awk '{print $2}' )
 mv slurm-src slurm-${ver}
 tar azcvf slurm-${ver}.tar.bz2 slurm-${ver}
-rpmbuild -ta --with slurmrestd --with hdf5 --with hwloc --with numa --with pmix slurm-${ver}.tar.bz2 |& tee build.log
+rpmbuild -ta --with slurmrestd --with hdf5 --with hwloc --with numa --with pmix --with nvml slurm-${ver}.tar.bz2 |& tee build.log
 cd ~
 # create local repo
 mkdir -pv /opt/slurm-repo/Packages
