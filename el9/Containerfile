@@ -28,6 +28,7 @@ COPY common/*.j2 LICENSE /opt/local/
 RUN dnf -y install yum-utils epel-release \
 	&& dnf config-manager --enable crb \
 	&& dnf -y install slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm java-latest-openjdk java-latest-openjdk-devel sudo nc xorg-x11-xauth hostname \
+	&& dnf -y update \
 	&& dnf clean all
 
 # create slurm user

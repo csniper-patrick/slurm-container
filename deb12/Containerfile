@@ -18,7 +18,7 @@ RUN wget https://github.com/matejak/argbash/archive/refs/tags/2.10.0.tar.gz -O a
 	&& tar xvf argbash-2.10.0.tar.gz \
 	&& argbash-2.10.0/bin/argbash entrypoint.m4 -o /opt/entrypoint
 
-FROM docker.io/library/debian:12
+FROM docker.io/library/debian:12-slim
 COPY --from=build /opt/slurm-repo /opt/slurm-repo
 COPY --from=build /etc/apt/sources.list.d/slurm.list /opt/slurm-repo
 COPY --from=build /etc/apt/sources.list.d/slurm.list /etc/apt/sources.list.d/slurm.list
@@ -27,6 +27,7 @@ COPY common/*.j2 LICENSE /opt/local/
 
 RUN apt-get -y update \
 	&& apt-get -y install slurm-smd-client slurm-smd-slurmd slurm-smd-slurmctld slurm-smd-slurmdbd slurm-smd-slurmrestd slurm-smd-sackd slurm-smd-sview slurm-smd-doc slurm-smd-dev slurm-smd-libpmi0 slurm-smd-libpmi2-0 slurm-smd-libnss-slurm slurm-smd-libpam-slurm-adopt systemd systemd-sysv openjdk-17-jdk openjdk-17-jre python3 python3-pip python3-dev python3-venv libpython3-dev libpython3-stdlib sudo netcat-traditional xauth hostname \
+	&& apt-get -y upgrade \
 	&& apt-get clean
 
 # create slurm user
