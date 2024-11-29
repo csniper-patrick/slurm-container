@@ -118,7 +118,7 @@ check_config_file () {
 	slurm_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurm*.conf | cut -c11- | head -n1)
 	slurm_group=$(id -gn ${slurm_user})
 
-	for slurm_dir in $(grep -h -E "^(StateSaveLocation)=" /etc/slurm/slurm*.conf | cut -d= -f2-) /run/slurmdbd /run/slurmctld /var/log/slurm ; do
+	for slurm_dir in $(grep -h -E "^(StateSaveLocation)=" /etc/slurm/slurm*.conf | cut -d= -f2-) /run/slurmdbd /run/slurmctld /run/slurm /var/log/slurm ; do
 		mkdir -pv ${slurm_dir} && chown ${slurm_user}:${slurm_group} ${slurm_dir}
 	done
 
@@ -126,7 +126,7 @@ check_config_file () {
 		touch ${slurm_file} && chown ${slurm_user}:${slurm_group} ${slurm_file}
 	done
 
-	chown -R ${slurm_user}:${slurm_group} /etc/slurm /var/spool/slurmctld 
+	chown -R ${slurm_user}:${slurm_group} /etc/slurm /var/spool/slurmctld /run/slurm
 }
 
 set -x
