@@ -29,7 +29,7 @@ x-init-var: &init-var
   - SLURMDBD_STORAGEHOST=slurm-container-db
 
 x-slurm-container: &slurm-container
-  image: docker.io/csniper/slurm:${TAG:-24.05}
+  image: docker.io/csniper/slurm:${TAG:-24.11}
   volumes: *common-volumes
   privileged: true
   environment: *init-var
