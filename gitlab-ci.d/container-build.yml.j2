@@ -35,6 +35,6 @@ build-{{ slurm_ver }}-{{ distro }}-arm64-image:
 {% endif %}
     - ( podman pull {{ tag }}-arm64 ) || ( podman build --squash -f {{ containerfile }} -t {{ tag }}-arm64 . && podman push {{ tag }}-arm64 )
   tags:
-    - arm64
+    - saas-linux-small-arm64
 
 {% endfor %}
