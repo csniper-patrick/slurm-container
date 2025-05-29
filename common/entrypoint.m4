@@ -152,9 +152,9 @@ case "${SLURM_ROLE}" in
         ;;
     slurmrestd)
 		# Role slurmrestd
-		export SLURMRESTD_SECURITY=DISABLE_USER_CHECK
+		# export SLURMRESTD_SECURITY=DISABLE_USER_CHECK
 		export SLURM_JWT=daemon
-		slurmrestd -v $SLURMRESTD_OPTIONS 0.0.0.0:6820
+		sudo -u slurmrestd slurmrestd -v $SLURMRESTD_OPTIONS 0.0.0.0:6820
         ;;
     sackd)
 		# Role sackd

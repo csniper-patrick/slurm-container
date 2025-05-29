@@ -32,7 +32,8 @@ RUN dnf -y install yum-utils epel-release \
 	&& dnf clean all
 
 # create slurm user
-RUN useradd -r -b /var/lib slurm
+RUN useradd -r -b /var/lib slurm \
+	&& useradd -r -b /var/lib -s /usr/sbin/nologin slurmrestd
 
 # set up jinja2-cli 
 RUN python3 -m venv /opt/local && /opt/local/bin/python3 -m pip install jinja2-cli 
