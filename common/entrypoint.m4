@@ -107,12 +107,8 @@ check_config_file () {
 	done
 
 	# generate /etc/slurm/slurm.jwks if necessary
-	( ( [[ -f /etc/slurm/slurm.jwks ]] || [[ -f /etc/slurm/slurm.key ]] ) && [[ ${KEYGEN} == off ]] ) \
+	( [[ -f /etc/slurm/slurm.jwks ]] && [[ ${KEYGEN} == off ]] ) \
 	|| keygen_HS264 /etc/slurm/slurm.jwks
-
-	# generate /etc/slurm/slurm.key if necessary
-	( [[ -f /etc/slurm/slurm.key ]] && [[ ${KEYGEN} == off ]] ) \
-	|| ( dd if=/dev/random of=/etc/slurm/slurm.key bs=1024 count=1 && chmod 0600 /etc/slurm/slurm.key )
 
 	# ensure correct directory ownership
 	slurm_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurm*.conf | cut -c11- | head -n1)
@@ -156,9 +152,9 @@ case "${SLURM_ROLE}" in
         ;;
     slurmrestd)
 		# Role slurmrestd
-		export SLURMRESTD_SECURITY=DISABLE_USER_CHECK
+		# export SLURMRESTD_SECURITY=DISABLE_USER_CHECK
 		export SLURM_JWT=daemon
-		slurmrestd -v $SLURMRESTD_OPTIONS 0.0.0.0:6820
+		sudo -u slurmrestd slurmrestd -v $SLURMRESTD_OPTIONS 0.0.0.0:6820
         ;;
     sackd)
 		# Role sackd
