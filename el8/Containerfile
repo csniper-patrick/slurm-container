@@ -13,10 +13,8 @@ COPY slurm ./slurm-src
 RUN ./build-slurm-rpm.sh
 
 # Build entrypoint 
-COPY common/entrypoint.m4 ./
-RUN wget https://github.com/matejak/argbash/archive/refs/tags/2.10.0.tar.gz -O argbash-2.10.0.tar.gz \
-	&& tar xvf argbash-2.10.0.tar.gz \
-	&& argbash-2.10.0/bin/argbash entrypoint.m4 -o /opt/entrypoint
+COPY common/entrypoint.m4 common/build-entrypoint.sh ./
+RUN ./build-entrypoint.sh
 
 FROM quay.io/rockylinux/rockylinux:8
 COPY --from=build /opt/slurm-repo /opt/slurm-repo
