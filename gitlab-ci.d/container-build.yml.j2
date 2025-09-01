@@ -17,7 +17,7 @@ build-{{ slurm_ver }}-{{ distro }}-amd64-image:
     - git -C ${CI_PROJECT_DIR}/slurm fetch --tags
     - git -C ${CI_PROJECT_DIR}/slurm checkout {{ GITTAG }}
 {% endif %}
-    - ( podman pull {{ tag }}-amd64 ) || ( podman build --squash -f {{ containerfile }} -t {{ tag }}-amd64 . && podman push {{ tag }}-amd64 )
+    - ( podman pull {{ tag }}-amd64 ) || ( podman build --squash -f {{ containerfile }} -t {{ tag }}-amd64 . && podman push --retry=5 {{ tag }}-amd64 )
 
 build-{{ slurm_ver }}-{{ distro }}-arm64-image:
   stage: build
@@ -35,7 +35,7 @@ build-{{ slurm_ver }}-{{ distro }}-arm64-image:
     - git -C ${CI_PROJECT_DIR}/slurm fetch --tags
     - git -C ${CI_PROJECT_DIR}/slurm checkout {{ GITTAG }}
 {% endif %}
-    - ( podman pull {{ tag }}-arm64 ) || ( podman build --squash -f {{ containerfile }} -t {{ tag }}-arm64 . && podman push {{ tag }}-arm64 )
+    - ( podman pull {{ tag }}-arm64 ) || ( podman build --squash -f {{ containerfile }} -t {{ tag }}-arm64 . && podman push --retry=5 {{ tag }}-arm64 )
   tags:
     - saas-linux-small-arm64
 
