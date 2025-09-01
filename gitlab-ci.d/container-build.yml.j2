@@ -6,7 +6,7 @@ build-{{ slurm_ver }}-{{ distro }}-amd64-image:
   timeout: 3h
   retry: 2
   hooks:
-      pre_get_sources_script:
+    pre_get_sources_script:
       - umask 0022
   image: quay.io/podman/stable:latest
   before_script:
@@ -24,7 +24,7 @@ build-{{ slurm_ver }}-{{ distro }}-arm64-image:
   timeout: 3h
   retry: 2
   hooks:
-      pre_get_sources_script:
+    pre_get_sources_script:
       - umask 0022
   image: quay.io/podman/stable:latest
   before_script:
@@ -38,5 +38,23 @@ build-{{ slurm_ver }}-{{ distro }}-arm64-image:
     - ( podman pull {{ tag }}-arm64 ) || ( podman build --squash -f {{ containerfile }} -t {{ tag }}-arm64 . && podman push {{ tag }}-arm64 )
   tags:
     - saas-linux-small-arm64
+
+tag-{{ slurm_ver }}-{{ distro }}-multi-arch-image:
+  stage: build
+  timeout: 1h
+  retry: 2
+  hooks:
+    pre_get_sources_script:
+      - umask 0022
+  image: quay.io/podman/stable:latest
+  before_script:
+    - podman login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" ${CI_REGISTRY}
+  script:
+    - podman pull {{ tag }}-amd64 {{ tag }}-arm64
+    - podman manifest create {{ tag }} {{ tag }}-amd64 {{ tag }}-arm64
+    - podman manifest push --all {{ tag }}
+  needs:
+    - build-{{ slurm_ver }}-{{ distro }}-arm64-image
+    - build-{{ slurm_ver }}-{{ distro }}-amd64-image
 
 {% endfor %}
