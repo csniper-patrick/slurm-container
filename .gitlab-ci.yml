@@ -5,12 +5,17 @@ cache: []
 
 stages:
   - init
+  - review
   # - test
   - build
   - deploy
 
 include:
   - local: 'gitlab-ci.d/init.yml'
+  - project: 'CSniper/ci-mgmt'
+    file: 'gemini-code-review.yml'
+    ref: 'main'
+
 
 build:
   stage: build
