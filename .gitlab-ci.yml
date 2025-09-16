@@ -13,7 +13,7 @@ stages:
 include:
   - local: 'gitlab-ci.d/init.yml'
   - project: 'CSniper/ci-mgmt'
-    file: 'gemini-code-review.yml'
+    file: 'code-review.yml'
     ref: 'main'
 
 
