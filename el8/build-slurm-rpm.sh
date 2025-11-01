@@ -19,7 +19,7 @@ else
 	slurm_source_dir=slurm-${ver}-${rel}
 fi
 mv slurm-src ${slurm_source_dir}
-tar azcvf ${slurm_source_dir}.tar.bz2 ${slurm_source_dir}
+tar jcvf ${slurm_source_dir}.tar.bz2 ${slurm_source_dir}
 rpmbuild -ta --with slurmrestd --with hdf5 --with hwloc --with numa --with pmix --with nvml  --with lua --with ucx --with jwt --with freeipmi ${slurm_source_dir}.tar.bz2 |& tee build.log
 cd ~
 # create local repo
