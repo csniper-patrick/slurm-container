@@ -131,14 +131,12 @@ case "${SLURM_ROLE}" in
     slurmctld)        
 		# Role slurmctld
 		check_config_file
-		run_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurm.conf | cut -c11- | head -n1)
-		sudo -u ${run_user} slurmctld -D -v $SLURMCTLD_OPTIONS
+		slurmctld -D -v $SLURMCTLD_OPTIONS
         ;;
     slurmdbd)
 		# Role slurmdbd
 		check_config_file
-		run_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurmdbd.conf | cut -c11- | head -n1)
-		sudo -u ${run_user} slurmdbd -D -s -v ${SLURMDBD_OPTIONS}
+		slurmdbd -D -s -v ${SLURMDBD_OPTIONS}
         ;;
     slurmd)
 		# Role slurmd

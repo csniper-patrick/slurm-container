@@ -7,14 +7,20 @@ dnf -y install munge munge-devel mariadb mariadb-devel gtk2 gtk2-devel gtk3 gtk3
 [[ $(uname -m) == x86_64 ]] && dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
 [[ $(uname -m) == aarch64 ]] && dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/sbsa/cuda-rhel9.repo
 dnf clean all
-dnf install -y cuda-nvml-devel-12-8
-export CPPFLAGS="$(pkg-config --cflags-only-I --keep-system-cflags nvidia-ml-12.8) ${CPPFLAGS}"
-export LDFLAGS="$(pkg-config --libs-only-L --keep-system-libs nvidia-ml-12.8) ${LDFLAGS}"
+dnf install -y cuda-nvml-devel-13-0
+export CPPFLAGS="$(pkg-config --cflags-only-I --keep-system-cflags nvidia-ml-13.0) ${CPPFLAGS}"
+export LDFLAGS="$(pkg-config --libs-only-L --keep-system-libs nvidia-ml-13.0) ${LDFLAGS}"
 
-ver=$(grep "Version:" slurm-src/slurm.spec | head -n 1 | awk '{print $2}' )
-mv slurm-src slurm-${ver}
-tar azcvf slurm-${ver}.tar.bz2 slurm-${ver}
-rpmbuild -ta --with slurmrestd --with hdf5 --with hwloc --with numa --with pmix --with nvml  --with lua --with ucx --with jwt --with freeipmi slurm-${ver}.tar.bz2 |& tee build.log
+ver=$(rpmspec -q --qf '%{version}\n' slurm-src/slurm.spec | head -n 1)
+rel=$(rpmspec -q --qf '%{release}\n' slurm-src/slurm.spec | head -n 1 | cut -d. -f1)
+if [[ ${rel} == 1 ]]; then 
+	slurm_source_dir=slurm-${ver}
+else
+	slurm_source_dir=slurm-${ver}-${rel}
+fi
+mv slurm-src ${slurm_source_dir}
+tar jcvf ${slurm_source_dir}.tar.bz2 ${slurm_source_dir}
+rpmbuild -ta --with slurmrestd --with hdf5 --with hwloc --with numa --with pmix --with nvml  --with lua --with ucx --with jwt --with freeipmi ${slurm_source_dir}.tar.bz2 |& tee build.log
 cd ~
 # create local repo
 mkdir -pv /opt/slurm-repo/Packages
