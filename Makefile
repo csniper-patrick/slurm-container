@@ -20,7 +20,7 @@ SLURM_VER := $(shell grep "Version:" slurm/slurm.spec | head -n 1 | awk '{print 
 DISTROS := $(sort $(patsubst %/Containerfile,%,$(shell ls */Containerfile 2>/dev/null)))
 
 # Phony targets don't represent files.
-.PHONY: all build prune $(DISTROS)
+.PHONY: all build prune $(DISTROS) up dev down
 
 # The default target when `make` is run without arguments.
 # Builds all discovered distributions.
@@ -37,4 +37,15 @@ $(DISTROS):
 
 # Prune dangling container images.
 prune:
+	$(PODMAN) compose down --volumes --remove-orphans
 	$(PODMAN) image prune -f
+
+# Start/stop slurm-container stack using compose.
+up:
+	$(PODMAN) compose up -d --remove-orphans --force-recreate
+
+dev:
+	$(PODMAN) compose -f compose.dev.yml up -d --remove-orphans --force-recreate
+
+down:
+	$(PODMAN) compose down --remove-orphans
