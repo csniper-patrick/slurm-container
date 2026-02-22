@@ -6,26 +6,30 @@ RUN mvn package
 # Artifact will be stored at /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar
 # RUN java -jar /build/target/json-web-key-generator-0.9-SNAPSHOT-jar-with-dependencies.jar --type RSA --size 2048 --algorithm RS256 --idGenerator sha1 --keySet --output /jwks.json --pubKeyOutput /jwks.pub.json
 
-FROM docker.io/library/debian:12 as build
+FROM quay.io/rockylinux/rockylinux:10 as build
 # Build slurm
-COPY deb12/*.sh ./
+COPY el10/*.sh ./
 COPY slurm ./slurm-src
-RUN ./build-slurm-deb.sh
+COPY el10/rocky-9.repo /etc/yum.repos.d/rocky-9.repo
+RUN ./build-slurm-rpm.sh
 
 # Build entrypoint 
 COPY common/entrypoint.m4 common/build-entrypoint.sh ./
 RUN ./build-entrypoint.sh
 
-FROM docker.io/library/debian:12-slim
+FROM quay.io/rockylinux/rockylinux:10
 COPY --from=build /opt/slurm-repo /opt/slurm-repo
-COPY --from=build /etc/apt/sources.list.d/slurm.list /opt/slurm-repo
-COPY --from=build /etc/apt/sources.list.d/slurm.list /etc/apt/sources.list.d/slurm.list
+COPY --from=build /etc/yum.repos.d/slurm.repo /opt/slurm-repo
+COPY --from=build /etc/yum.repos.d/slurm.repo /etc/yum.repos.d/slurm.repo
 COPY --from=build /opt/entrypoint /opt/local/bin/entrypoint
 COPY common/*.j2 LICENSE /opt/local/
+COPY el10/rocky-9.repo /etc/yum.repos.d/rocky-9.repo
 
-RUN apt-get -y update \
-	&& apt-get -y install slurm-smd-client slurm-smd-slurmd slurm-smd-slurmctld slurm-smd-slurmdbd slurm-smd-slurmrestd slurm-smd-sackd slurm-smd-sview slurm-smd-doc slurm-smd-dev slurm-smd-libpmi0 slurm-smd-libpmi2-0 slurm-smd-libnss-slurm slurm-smd-libpam-slurm-adopt systemd systemd-sysv openjdk-17-jdk openjdk-17-jre python3 python3-pip python3-dev python3-venv libpython3-dev libpython3-stdlib sudo netcat-traditional xauth hostname \
-	&& apt-get clean
+RUN dnf -y install yum-utils epel-release \
+	&& dnf config-manager --enable crb \
+	&& dnf -y --enablerepo=rocky-9-baseos,rocky-9-appstream,rocky-9-crb,rocky-9-epel install http-parser http-parser-devel libjwt libjwt-devel \
+	&& dnf -y install slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm java-latest-openjdk java-latest-openjdk-devel sudo nc xorg-x11-xauth hostname \
+	&& dnf clean all
 
 # create slurm user
 RUN useradd -r -b /var/lib slurm \
@@ -40,9 +44,8 @@ COPY --from=build-jwk-generator /build/target/json-web-key-generator-0.9-SNAPSHO
 # start slurmd via systemd
 COPY common/slurmd-extra.conf /etc/systemd/system/slurmd.service.d/
 RUN ln -sf /lib/systemd/system/multi-user.target /etc/systemd/system/default.target \
-	&& ln -sf /usr/lib/systemd/system/slurmd.service /etc/systemd/system/multi-user.target.wants/ \
-	&& rm -f /etc/systemd/system/systemd-logind.service \
-	&& mkdir -pv /etc/sysconfig/
+	&& ln -s /usr/lib/systemd/system/slurmd.service /etc/systemd/system/multi-user.target.wants/ \
+	&& rm -f /etc/systemd/system/systemd-logind.service 
 
 # Expose port used by slurm
 EXPOSE 6817-6820

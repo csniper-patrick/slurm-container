@@ -1,0 +1,36 @@
+#!/bin/bash -x
+dnf -y install @development yum-utils rpm-build epel-release
+dnf config-manager --enable crb
+dnf -y --enablerepo=rocky-9-baseos,rocky-9-appstream,rocky-9-crb,rocky-9-epel install http-parser http-parser-devel libjwt libjwt-devel
+dnf -y install munge munge-devel mariadb mariadb-devel gtk2 gtk2-devel gtk3 gtk3-devel json-c json-c-devel libyaml libyaml-devel wget python3 readline-devel pam-devel perl-ExtUtils-MakeMaker perl-devel perl-JSON-PP createrepo_c hdf5 hdf5-devel man2html man2html-core pam pam-devel freeipmi freeipmi-devel numactl numactl-devel pmix pmix-devel hwloc hwloc-devel lua lua-devel ucx ucx-devel jq
+
+# install nvml
+[[ $(uname -m) == x86_64 ]] && dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel10/x86_64/cuda-rhel10.repo
+[[ $(uname -m) == aarch64 ]] && dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel10/sbsa/cuda-rhel10.repo
+dnf clean all
+dnf install -y cuda-nvml-devel-13-0
+export CPPFLAGS="$(pkg-config --cflags-only-I --keep-system-cflags nvidia-ml-13.0) ${CPPFLAGS}"
+export LDFLAGS="$(pkg-config --libs-only-L --keep-system-libs nvidia-ml-13.0) ${LDFLAGS}"
+
+ver=$(rpmspec -q --qf '%{version}\n' slurm-src/slurm.spec | head -n 1)
+rel=$(rpmspec -q --qf '%{release}\n' slurm-src/slurm.spec | head -n 1 | cut -d. -f1)
+if [[ ${rel} == 1 ]]; then 
+	slurm_source_dir=slurm-${ver}
+else
+	slurm_source_dir=slurm-${ver}-${rel}
+fi
+mv slurm-src ${slurm_source_dir}
+tar jcvf ${slurm_source_dir}.tar.bz2 ${slurm_source_dir}
+rpmbuild -ta --with slurmrestd --with hdf5 --with hwloc --with numa --with pmix --with nvml  --with lua --with ucx --with jwt --with freeipmi ${slurm_source_dir}.tar.bz2 |& tee build.log
+cd ~
+# create local repo
+mkdir -pv /opt/slurm-repo/Packages
+find /root/rpmbuild/RPMS/ -iname "*.rpm" -exec mv {} /opt/slurm-repo/Packages \;
+createrepo /opt/slurm-repo
+cat > /etc/yum.repos.d/slurm.repo <<EOF
+[slurm]
+name=slurm local repository
+baseurl=file:///opt/slurm-repo/
+gpgcheck=0
+enabled=1
+EOF
