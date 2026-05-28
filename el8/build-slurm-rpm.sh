@@ -9,11 +9,11 @@ dnf -y install munge munge-devel mariadb mariadb-devel gtk2 gtk2-devel gtk3 gtk3
 [[ $(uname -m) == x86_64 ]] && dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
 [[ $(uname -m) == aarch64 ]] && dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/sbsa/cuda-rhel8.repo
 dnf clean all
-dnf install -y cuda-nvml-devel-13-0
+dnf install -y $(dnf list cuda-nvml-devel* | grep -oE "^cuda-nvml-devel-[0-9]+-[0-9]+" | tail -n1)
 
 # Configure environment for NVML
-export CPPFLAGS="$(pkg-config --cflags-only-I --keep-system-cflags nvidia-ml-13.0) ${CPPFLAGS}"
-export LDFLAGS="$(pkg-config --libs-only-L --keep-system-libs nvidia-ml-13.0) ${LDFLAGS}"
+export CPPFLAGS="$(pkg-config --cflags-only-I --keep-system-cflags $(pkg-config --list-all | grep -oE 'nvidia-ml-[0-9]+\.[0-9]+') ) ${CPPFLAGS}"
+export LDFLAGS="$(pkg-config --libs-only-L --keep-system-libs $(pkg-config --list-all | grep -oE 'nvidia-ml-[0-9]+\.[0-9]+') ) ${LDFLAGS}"
 
 # 3. Prepare Slurm source and build RPM packages
 ver=$(rpmspec -q --qf '%{version}\n' slurm-src/slurm.spec | head -n 1)

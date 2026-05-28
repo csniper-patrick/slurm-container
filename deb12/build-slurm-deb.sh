@@ -10,11 +10,11 @@ apt-get -y install fakeroot devscripts git wget munge libmunge-dev mariadb-serve
 dpkg -i cuda-keyring_1.1-1_all.deb
 add-apt-repository contrib
 apt-get update
-apt-get -y install cuda-nvml-dev-13-0
+apt-get -y install $(apt-cache search cuda-nvml-dev | grep -oE "^cuda-nvml-dev-[0-9]+-[0-9]+" | sort | tail -n1)
 
 # Configure environment for NVML
-export CPPFLAGS="$(pkg-config --cflags-only-I --keep-system-cflags nvidia-ml-13.0) ${CPPFLAGS}"
-export LDFLAGS="$(pkg-config --libs-only-L --keep-system-libs nvidia-ml-13.0) ${LDFLAGS}"
+export CPPFLAGS="$(pkg-config --cflags-only-I --keep-system-cflags $(pkg-config --list-all | grep -oE 'nvidia-ml-[0-9]+\.[0-9]+') ) ${CPPFLAGS}"
+export LDFLAGS="$(pkg-config --libs-only-L --keep-system-libs $(pkg-config --list-all | grep -oE 'nvidia-ml-[0-9]+\.[0-9]+') ) ${LDFLAGS}"
 
 # 3. Build Slurm Debian packages
 cd slurm-src
