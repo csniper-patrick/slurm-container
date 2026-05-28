@@ -8,8 +8,8 @@ apt-get -y install fakeroot devscripts git wget munge libmunge-dev mariadb-serve
 [[ $(uname -m) == x86_64 ]] && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
 [[ $(uname -m) == aarch64 ]] && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/sbsa/cuda-keyring_1.1-1_all.deb
 dpkg -i cuda-keyring_1.1-1_all.deb
-apt-get update
-apt-get -y install $(apt-cache search cuda-nvml-dev | grep -oE "^cuda-nvml-dev-[0-9]+-[0-9]+" | sort | tail -n1)
+apt-get update --allow-insecure-repositories || true
+apt-get -y --allow-unauthenticated install $(apt-cache search cuda-nvml-dev | grep -oE "^cuda-nvml-dev-[0-9]+-[0-9]+" | sort | tail -n1)
 
 # Configure environment for NVML
 export CPPFLAGS="$(pkg-config --cflags-only-I --keep-system-cflags $(pkg-config --list-all | grep -oE 'nvidia-ml-[0-9]+\.[0-9]+') ) ${CPPFLAGS}"
