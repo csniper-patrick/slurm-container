@@ -1,7 +1,4 @@
-{% for distro in distros %}
-{%- set tag = "${CI_REGISTRY_IMAGE}/slurm:${CI_COMMIT_SHORT_SHA}-" + slurm_ver + "-" + distro -%}
-{%- set containerfile = distro + "/Containerfile" -%}
-build-{{ slurm_ver }}-{{ distro }}-amd64-image:
+build-{{ slurm_ver }}-amd64-image:
   stage: build
   timeout: 3h
   retry: 2
@@ -17,9 +14,17 @@ build-{{ slurm_ver }}-{{ distro }}-amd64-image:
     - git -C ${CI_PROJECT_DIR}/slurm fetch --tags
     - git -C ${CI_PROJECT_DIR}/slurm checkout {{ GITTAG }}
 {% endif %}
-    - ( podman pull {{ tag }}-amd64 ) || ( podman build --squash -f {{ containerfile }} -t {{ tag }}-amd64 . && podman push --retry=5 {{ tag }}-amd64 )
+    - TAG="${CI_REGISTRY_IMAGE}/slurm:${CI_COMMIT_SHORT_SHA}-{{ slurm_ver }}-${DISTRO}"
+    - CONTAINERFILE="${DISTRO}/Containerfile"
+    - ( podman pull ${TAG}-amd64 ) || ( podman build --squash -f ${CONTAINERFILE} -t ${TAG}-amd64 . && podman push --retry=5 ${TAG}-amd64 )
+  parallel:
+    matrix:
+      - DISTRO:
+        {%- for distro in distros %}
+        - {{ distro }}
+        {%- endfor %}
 
-build-{{ slurm_ver }}-{{ distro }}-arm64-image:
+build-{{ slurm_ver }}-arm64-image:
   stage: build
   timeout: 3h
   retry: 2
@@ -35,11 +40,19 @@ build-{{ slurm_ver }}-{{ distro }}-arm64-image:
     - git -C ${CI_PROJECT_DIR}/slurm fetch --tags
     - git -C ${CI_PROJECT_DIR}/slurm checkout {{ GITTAG }}
 {% endif %}
-    - ( podman pull {{ tag }}-arm64 ) || ( podman build --squash -f {{ containerfile }} -t {{ tag }}-arm64 . && podman push --retry=5 {{ tag }}-arm64 )
+    - TAG="${CI_REGISTRY_IMAGE}/slurm:${CI_COMMIT_SHORT_SHA}-{{ slurm_ver }}-${DISTRO}"
+    - CONTAINERFILE="${DISTRO}/Containerfile"
+    - ( podman pull ${TAG}-arm64 ) || ( podman build --squash -f ${CONTAINERFILE} -t ${TAG}-arm64 . && podman push --retry=5 ${TAG}-arm64 )
   tags:
     - saas-linux-small-arm64
+  parallel:
+    matrix:
+      - DISTRO:
+        {%- for distro in distros %}
+        - {{ distro }}
+        {%- endfor %}
 
-tag-{{ slurm_ver }}-{{ distro }}-multi-arch-image:
+tag-{{ slurm_ver }}-multi-arch-image:
   stage: build
   timeout: 1h
   retry: 2
@@ -50,11 +63,22 @@ tag-{{ slurm_ver }}-{{ distro }}-multi-arch-image:
   before_script:
     - podman login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" ${CI_REGISTRY}
   script:
-    - podman pull {{ tag }}-amd64 {{ tag }}-arm64
-    - podman manifest create {{ tag }} {{ tag }}-amd64 {{ tag }}-arm64
-    - podman manifest push --all {{ tag }}
+    - TAG="${CI_REGISTRY_IMAGE}/slurm:${CI_COMMIT_SHORT_SHA}-{{ slurm_ver }}-${DISTRO}"
+    - podman pull ${TAG}-amd64 ${TAG}-arm64
+    - podman manifest create ${TAG} ${TAG}-amd64 ${TAG}-arm64
+    - podman manifest push --all ${TAG}
   needs:
-    - build-{{ slurm_ver }}-{{ distro }}-arm64-image
-    - build-{{ slurm_ver }}-{{ distro }}-amd64-image
-
-{% endfor %}
+    - job: build-{{ slurm_ver }}-amd64-image
+      parallel:
+        matrix:
+          - DISTRO: ['$[[ matrix.DISTRO ]]']
+    - job: build-{{ slurm_ver }}-arm64-image
+      parallel:
+        matrix:
+          - DISTRO: ['$[[ matrix.DISTRO ]]']
+  parallel:
+    matrix:
+      - DISTRO:
+        {%- for distro in distros %}
+        - {{ distro }}
+        {%- endfor %}

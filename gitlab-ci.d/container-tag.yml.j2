@@ -1,13 +1,4 @@
-{% for tag in tags %}
-{%- set source_tag = "${CI_REGISTRY_IMAGE}/slurm:${CI_COMMIT_SHORT_SHA}-" + slurm_ver + "-" + tag.distro -%}
-{% if tag.name is not none %}
-{%- set latest_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-" + tag.name -%}
-{%- set yyyymm_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-" + tag.name + "-" + YYYYMM -%}
-{% else %}
-{%- set latest_tag = "${DOCKER_REPO}/slurm:" + slurm_ver -%}
-{%- set yyyymm_tag = "${DOCKER_REPO}/slurm:" + slurm_ver + "-" + YYYYMM -%}
-{% endif %}
-dockerhub-{{ slurm_ver }}-{{ tag.name | default("default", true) }}-image:
+dockerhub-{{ slurm_ver }}-image:
   stage: deploy
   image: quay.io/podman/stable:latest
   retry: 2
@@ -15,17 +6,30 @@ dockerhub-{{ slurm_ver }}-{{ tag.name | default("default", true) }}-image:
     - podman login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" ${CI_REGISTRY}
     - podman login -u "${DOCKER_USERNAME}" -p "${DOCKER_TOKEN}" docker.io
   script:
-    - podman pull {{ source_tag }}-amd64
-    - podman pull {{ source_tag }}-arm64
-    - podman tag {{ source_tag }}-amd64 {{ latest_tag }}-amd64
-    - podman tag {{ source_tag }}-arm64 {{ latest_tag }}-arm64
-    - podman tag {{ source_tag }}-amd64 {{ yyyymm_tag }}-amd64
-    - podman tag {{ source_tag }}-arm64 {{ yyyymm_tag }}-arm64
-    - podman manifest create {{ latest_tag }} {{ latest_tag }}-amd64 {{ latest_tag }}-arm64
-    - podman manifest create {{ yyyymm_tag }} {{ yyyymm_tag }}-amd64 {{ yyyymm_tag }}-arm64
-    - podman manifest push --all {{ latest_tag }}
-    - podman manifest push --all {{ yyyymm_tag }}
+    - SOURCE_TAG="${CI_REGISTRY_IMAGE}/slurm:${CI_COMMIT_SHORT_SHA}-{{ slurm_ver }}-${DISTRO}"
+    - |
+      if [ "${TAG_NAME}" != "default" ]; then
+        LATEST_TAG="${DOCKER_REPO}/slurm:{{ slurm_ver }}-${TAG_NAME}"
+        YYYYMM_TAG="${DOCKER_REPO}/slurm:{{ slurm_ver }}-${TAG_NAME}-{{ YYYYMM }}"
+      else
+        LATEST_TAG="${DOCKER_REPO}/slurm:{{ slurm_ver }}"
+        YYYYMM_TAG="${DOCKER_REPO}/slurm:{{ slurm_ver }}-{{ YYYYMM }}"
+      fi
+    - podman pull ${SOURCE_TAG}-amd64
+    - podman pull ${SOURCE_TAG}-arm64
+    - podman tag ${SOURCE_TAG}-amd64 ${LATEST_TAG}-amd64
+    - podman tag ${SOURCE_TAG}-arm64 ${LATEST_TAG}-arm64
+    - podman tag ${SOURCE_TAG}-amd64 ${YYYYMM_TAG}-amd64
+    - podman tag ${SOURCE_TAG}-arm64 ${YYYYMM_TAG}-arm64
+    - podman manifest create ${LATEST_TAG} ${LATEST_TAG}-amd64 ${LATEST_TAG}-arm64
+    - podman manifest create ${YYYYMM_TAG} ${YYYYMM_TAG}-amd64 ${YYYYMM_TAG}-arm64
+    - podman manifest push --all ${LATEST_TAG}
+    - podman manifest push --all ${YYYYMM_TAG}
   rules:
     - if: $DOCKER_USERNAME && $DOCKER_TOKEN && $DOCKER_REPO
-
-{% endfor %}
+  parallel:
+    matrix:
+      {%- for tag in tags %}
+      - DISTRO: {{ tag.distro }}
+        TAG_NAME: "{{ tag.name | default('default', true) }}"
+      {%- endfor %}
