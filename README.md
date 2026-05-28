@@ -17,7 +17,7 @@ root@slurm-master# mkdir -pv /opt/slurm/etc-slurm /opt/slurm/spool-slurmctld
 root@slurm-master# podman run --it --rm --name slurmctld --hostname slurm-master \
 >	-v /opt/slurm/spool-slurmctld:/var/spool/slurmctld:Z \
 >	-v /opt/slurm/etc-slurm:/etc/slurm:Z --net=hosts --privileged -d \
->	docker.io/csniper/slurm:24.05 --role slurmctld \
+>	docker.io/csniper/slurm:26.05 --role slurmctld \
 >	--clustername demo --slurmctld-hosts slurm-master
 ```
 This generates the necessary configuration and starts the slurmctld. The slurm configuration files are located under `/opt/slurm/etc-slurm`. You need to distribute these files to compute nodes/slurmd hosts under `/etc/slurm/`. By default this cluster uses dynamic node, so you need to start slurmd with "-Z" option. or you can modify the generated slurm.conf to give it a list of nodes. 
@@ -27,7 +27,7 @@ After the initial run, you can remove `clustername` and `slurmctld-hosts` option
 root@slurm-master# podman run --it --rm --name slurmctld --hostname slurm-master \
 >	-v /opt/slurm/spool-slurmctld:/var/spool/slurmctld:Z \
 >	-v /opt/slurm/etc-slurm:/etc/slurm:Z --net=hosts --privileged -d \
->	docker.io/csniper/slurm:24.05 --role slurmctld 
+>	docker.io/csniper/slurm:26.05 --role slurmctld 
 ```
 If you make changes to slurm.conf, make sure you sync the file across the cluster, and then either restart the container or run `scontrol reconfigure` . 
 
