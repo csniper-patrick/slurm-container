@@ -20,7 +20,7 @@ SLURM_VER := $(shell grep "Version:" slurm/slurm.spec | head -n 1 | awk '{print 
 DISTROS := $(sort $(patsubst %/Containerfile,%,$(shell ls */Containerfile 2>/dev/null)))
 
 # Phony targets don't represent files.
-.PHONY: all build prune $(DISTROS) up dev down
+.PHONY: all build clean prune $(DISTROS) up dev down
 
 # The default target when `make` is run without arguments.
 # Builds all discovered distributions.
@@ -33,7 +33,8 @@ build: all
 # Rule to build a container for a specific distribution.
 # Example: `make el8`
 $(DISTROS):
-	$(PODMAN) build --pull=newer -t slurm:$@ -t slurm:$(SLURM_VER)-$@ --squash -f $@/Containerfile .
+	@echo "Building slurm:$@ image..."
+	@$(PODMAN) build --pull=newer -t slurm:$@ -t slurm:$(SLURM_VER)-$@ --squash -f $@/Containerfile . 2>&1 | tee $@-img-build.log
 
 # Prune dangling container images.
 prune:
@@ -49,3 +50,8 @@ dev:
 
 down:
 	$(PODMAN) compose down --remove-orphans
+
+# Clean up generated files.
+clean:
+	@echo "Cleaning up generated files..."
+	@rm -f *build.log
