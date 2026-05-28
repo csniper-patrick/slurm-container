@@ -3,7 +3,7 @@
 # 1. Install system dependencies and enable necessary repositories
 dnf -y install @development yum-utils rpm-build epel-release
 dnf config-manager --enable crb
-dnf -y install munge munge-devel mariadb mariadb-devel gtk2 gtk2-devel gtk3 gtk3-devel http-parser http-parser-devel json-c json-c-devel libyaml libyaml-devel libjwt libjwt-devel wget python3 readline-devel pam-devel perl-ExtUtils-MakeMaker perl-devel perl-JSON-PP createrepo_c hdf5 hdf5-devel man2html man2html-core pam pam-devel freeipmi freeipmi-devel numactl numactl-devel pmix pmix-devel hwloc hwloc-devel lua lua-devel ucx ucx-devel jq
+dnf -y install munge munge-devel mariadb mariadb-devel gtk2 gtk2-devel gtk3 gtk3-devel http-parser http-parser-devel llhttp llhttp-devel json-c json-c-devel libyaml libyaml-devel libjwt libjwt-devel wget python3 readline-devel pam-devel perl-ExtUtils-MakeMaker perl-devel perl-JSON-PP createrepo_c hdf5 hdf5-devel man2html man2html-core pam pam-devel freeipmi freeipmi-devel numactl numactl-devel pmix pmix-devel hwloc hwloc-devel lua lua-devel ucx ucx-devel jq
 
 # 2. Install NVIDIA Management Library (NVML) for GPU support
 [[ $(uname -m) == x86_64 ]] && dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
@@ -25,7 +25,7 @@ else
 fi
 mv slurm-src ${slurm_source_dir}
 tar jcvf ${slurm_source_dir}.tar.bz2 ${slurm_source_dir}
-rpmbuild -ta --with slurmrestd --with hdf5 --with hwloc --with numa --with pmix --with nvml  --with lua --with ucx --with jwt --with freeipmi ${slurm_source_dir}.tar.bz2 |& tee build.log
+rpmbuild --noclean -ta --with slurmrestd --with hdf5 --with hwloc --with numa --with pmix --with nvml  --with lua --with ucx --with jwt --with freeipmi ${slurm_source_dir}.tar.bz2 |& tee build.log
 cd ~
 
 # 4. Create a local RPM repository for Slurm packages

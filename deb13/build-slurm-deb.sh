@@ -2,7 +2,7 @@
 
 # 1. Install system dependencies for Slurm build
 apt-get -y update
-apt-get -y install fakeroot devscripts git wget munge libmunge-dev mariadb-server mariadb-client libmariadb-dev libhttp-parser2.9 libhttp-parser-dev libjson-c5 libjson-c-dev libyaml-0-2 libyaml-dev libjwt2 libjwt-dev openssl libssl-dev wget curl bzip2 build-essential python3 libpmix-bin libpmix-dev libpmix2 systemd dpkg-dev vim gfortran libsysfs2 libsysfs-dev pkg-config lua5.4 lua5.4-dev libucx0 libucx-dev ucx-utils jq
+apt-get -y install fakeroot devscripts git wget munge libmunge-dev mariadb-server mariadb-client libmariadb-dev libllhttp-dev libhttp-parser-dev libjson-c5 libjson-c-dev libyaml-0-2 libyaml-dev libjwt2 libjwt-dev openssl libssl-dev wget curl bzip2 build-essential python3 libpmix-bin libpmix-dev libpmix2 systemd dpkg-dev vim gfortran libsysfs2 libsysfs-dev pkg-config lua5.4 lua5.4-dev libucx0 libucx-dev ucx-utils jq
 
 # 2. Install NVIDIA Management Library (NVML) for GPU support
 [[ $(uname -m) == x86_64 ]] && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
