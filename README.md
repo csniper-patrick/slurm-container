@@ -80,6 +80,36 @@ To use locally built images instead of the published images for either cluster m
 make up IMAGE_SOURCE=local
 make ha IMAGE_SOURCE=local
 ```
+> [!NOTE]
+> `IMAGE_SOURCE=local` defaults to `TAG=el9`. You can target any supported distribution image by setting `TAG` (e.g., `TAG=el10 make up IMAGE_SOURCE=local` or `TAG=deb12 make ha IMAGE_SOURCE=local`).
+
+### Scaling Compute Nodes
+
+By default, 2 compute worker replicas are started. You can customize this count via `COMPUTE_REPLICAS`:
+```bash
+COMPUTE_REPLICAS=4 make ha
+# or with single-node profile:
+COMPUTE_REPLICAS=4 make up
+```
+
+### Stopping and Cleaning Up
+
+To stop all running cluster containers:
+```bash
+make down
+# or:
+podman compose --profile single --profile ha down
+```
+
+To tear down containers, remove named volumes, and prune dangling images:
+```bash
+make prune
+```
+
+### Developing with Dev Containers (VS Code)
+
+You can open this repository directly in VS Code using Dev Containers. It boots the HA Slurm cluster and attaches your workspace to the `client` submission service (`sackd`) with the repository mounted at `/root/slurm-container`.
+
 
 ### Usage
 ```

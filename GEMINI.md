@@ -39,7 +39,7 @@ To run the single-node cluster:
 ```bash
 make up
 # or:
-podman-compose --profile single up -d
+podman compose --profile single up -d
 ```
 
 To run the HA cluster:
@@ -47,7 +47,7 @@ To run the HA cluster:
 ```bash
 make ha
 # or:
-podman-compose --profile ha up -d
+podman compose --profile ha up -d
 ```
 
 To use locally built images instead of published images:

@@ -16,7 +16,7 @@ The project builds and containerizes Slurm services such as `slurmctld`, `slurmd
 ## 2. Key Conventions & Tooling
 
 * **Container Engine:** Podman is preferred if present in the environment; otherwise, falls back to Docker.
-* **Makefile Automation:** The `Makefile` dynamically discovers directories containing a `Containerfile` (distributions) and compiles images for them. Phony targets such as `all`, `build`, `prune`, `up`, `dev`, and `down` are supported.
+* **Makefile Automation:** The `Makefile` dynamically discovers directories containing a `Containerfile` (distributions) and compiles images for them. Phony targets such as `all`, `build`, `prune`, `up`, `ha`, and `down` are supported.
 * **Entrypoint Generation:** The `/opt/local/bin/entrypoint` script in target images is constructed by compiling `common/entrypoint.m4` using `argbash` via `common/build-entrypoint.sh`. Always edit the `common/entrypoint.m4` template to make changes to entrypoint logic, then re-generate the script.
 * **Configuration Management:** System configuration files are generated dynamically inside the containers at startup using `jinja2-cli` with templates under `common/` based on environment variables or entrypoint arguments.
 
@@ -34,13 +34,13 @@ The project builds and containerizes Slurm services such as `slurmctld`, `slurmd
   ```bash
   make up
   # or directly:
-  podman-compose --profile single up -d
+  podman compose --profile single up -d
   ```
 * **Run high-availability (HA) Slurm cluster:**
   ```bash
   make ha
   # or directly:
-  podman-compose --profile ha up -d
+  podman compose --profile ha up -d
   ```
 * **Use local images instead of released image:**
   ```bash
@@ -51,7 +51,7 @@ The project builds and containerizes Slurm services such as `slurmctld`, `slurmd
   ```bash
   make down
   # or directly:
-  podman-compose --profile single --profile ha down
+  podman compose --profile single --profile ha down
   ```
 
 ---

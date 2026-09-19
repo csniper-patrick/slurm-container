@@ -18,36 +18,30 @@ x-database-volumes: &database-volumes
   - slurm_acct_db:/var/lib/mysql
 
 x-db-var: &db-var
-  - MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
-  - MYSQL_USER=${MYSQL_USER:-slurm}
-  - MYSQL_DATABASE=${MYSQL_DATABASE:-slurm_acct_db}
-  - MYSQL_RANDOM_ROOT_PASSWORD=${MYSQL_RANDOM_ROOT_PASSWORD:-yes}
+  MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password}
+  MYSQL_USER: ${MYSQL_USER:-slurm}
+  MYSQL_DATABASE: ${MYSQL_DATABASE:-slurm_acct_db}
+  MYSQL_RANDOM_ROOT_PASSWORD: ${MYSQL_RANDOM_ROOT_PASSWORD:-yes}
 
-# All these variable are required for initialising database and cluster configuration.
+# Common variables required for initialising database and cluster configuration.
 # Once the cluster has initialised, it follows the configuration saved in the volumes on restart.
+x-init-var-common: &init-var-common
+  <<: *db-var
+  CLUSTERNAME: ${CLUSTERNAME:-demo}
+  SLURMDBD_STORAGEHOST: ${SLURMDBD_STORAGEHOST:-slurm-container-db}
+  CGROUP_CONSTRAINSWAPSPACE: ${CGROUP_CONSTRAINSWAPSPACE:-no}
+  SLURMCTLD_OPTIONS: ${SLURMCTLD_OPTIONS:-}
+
 x-init-var-single: &init-var-single
-  - SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:-slurm-container-master}
-  - SLURMDBD_HOSTS=${SLURMDBD_HOSTS:-slurm-container-slurmdb}
-  - CLUSTERNAME=${CLUSTERNAME:-demo}
-  - MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
-  - MYSQL_USER=${MYSQL_USER:-slurm}
-  - MYSQL_DATABASE=${MYSQL_DATABASE:-slurm_acct_db}
-  - MYSQL_RANDOM_ROOT_PASSWORD=${MYSQL_RANDOM_ROOT_PASSWORD:-yes}
-  - SLURMDBD_STORAGEHOST=${SLURMDBD_STORAGEHOST:-slurm-container-db}
-  - CGROUP_CONSTRAINSWAPSPACE=${CGROUP_CONSTRAINSWAPSPACE:-no}
-  - SLURMCTLD_OPTIONS=${SLURMCTLD_OPTIONS:--i}
+  <<: *init-var-common
+  SLURMCTLD_HOSTS: ${SLURMCTLD_HOSTS:-slurm-container-master}
+  SLURMDBD_HOSTS: ${SLURMDBD_HOSTS:-slurm-container-slurmdb}
 
 x-init-var-ha: &init-var-ha
-  - SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:-slurm-container-master-1,slurm-container-master-2}
-  - SLURMDBD_HOSTS=${SLURMDBD_HOSTS:-slurm-container-slurmdb-1,slurm-container-slurmdb-2}
-  - CLUSTERNAME=${CLUSTERNAME:-demo}
-  - MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
-  - MYSQL_USER=${MYSQL_USER:-slurm}
-  - MYSQL_DATABASE=${MYSQL_DATABASE:-slurm_acct_db}
-  - MYSQL_RANDOM_ROOT_PASSWORD=${MYSQL_RANDOM_ROOT_PASSWORD:-yes}
-  - SLURMDBD_STORAGEHOST=${SLURMDBD_STORAGEHOST:-slurm-container-db}
-  - CGROUP_CONSTRAINSWAPSPACE=${CGROUP_CONSTRAINSWAPSPACE:-no}
-  - SLURMCTLD_OPTIONS=${SLURMCTLD_OPTIONS:--i}
+  <<: *init-var-common
+  SLURMCTLD_HOSTS: ${SLURMCTLD_HOSTS:-slurm-container-master-1,slurm-container-master-2}
+  SLURMDBD_HOSTS: ${SLURMDBD_HOSTS:-slurm-container-slurmdb-1,slurm-container-slurmdb-2}
+
 
 x-slurm-container: &slurm-container
   image: ${SLURM_IMAGE:-docker.io/csniper/slurm:${TAG:-26.05}}

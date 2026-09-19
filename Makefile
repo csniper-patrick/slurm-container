@@ -41,7 +41,7 @@ IMAGE_SOURCE ?= released
 
 ifeq ($(IMAGE_SOURCE),local)
 	TAG ?= el9
-	SLURM_IMAGE ?= localhost/slurm:$(TAG)
+	SLURM_IMAGE ?= slurm:$(TAG)
 else
 	TAG ?= 26.05
 	SLURM_IMAGE ?= docker.io/csniper/slurm:$(TAG)
