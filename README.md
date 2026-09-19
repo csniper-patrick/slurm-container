@@ -56,20 +56,60 @@ If you use config-less mode, you need to at least sync `/etc/slurm/slurm.key` to
 ### Local Demo cluster (`./compose.yml`)
 ![demo cluster](./imgs/demo-cluster.drawio.svg)  
 
-The compose.yml file included in the repository creates a very simple cluster with slurmdbd and slurmrestd enabled. 
+The `compose.yml` file creates a simple single-node cluster with `slurmdbd`, `slurmrestd`, and a submission client (`sackd`) enabled using the `single` profile.
+```bash
+make up
+# or:
+podman compose --profile single up -d --force-recreate
 ```
-podman compose up -d --force-recreate
-```
-In the 4 slurm containers, slurmd container is required to run in systemd mode. Other containers simply start the process in the foreground.
+Among the Slurm containers, the `slurmd` container is required to run in systemd mode. Other containers simply start the process in the foreground.
 
-### More complicated demo cluster (`./compose.dev.yml`)
+### High-Availability (HA) demo cluster (`./compose.yml`)
 ![demo cluster](./imgs/ha-compose.drawio.svg)  
 
-This compose file expects a locally built image, and starts the container cluster with 2 daemons for every service, plus one api host (slurmrestd) and one submission client (sackd)
+The `ha` profile starts the container cluster with 2 daemons for every service, plus one api host (slurmrestd) and one submission client (sackd).
 
+```bash
+make ha
+# or:
+podman compose --profile ha up -d --force-recreate
 ```
-podman compose -f compose.dev.yml up -d --force-recreate
+
+To use locally built images instead of the published images for either cluster mode:
+```bash
+make up IMAGE_SOURCE=local
+make ha IMAGE_SOURCE=local
 ```
+> [!NOTE]
+> `IMAGE_SOURCE=local` defaults to `TAG=el9`. You can target any supported distribution image by setting `TAG` (e.g., `TAG=el10 make up IMAGE_SOURCE=local` or `TAG=deb12 make ha IMAGE_SOURCE=local`).
+
+### Scaling Compute Nodes
+
+By default, 2 compute worker replicas are started. You can customize this count via `COMPUTE_REPLICAS`:
+```bash
+COMPUTE_REPLICAS=4 make ha
+# or with single-node profile:
+COMPUTE_REPLICAS=4 make up
+```
+
+### Stopping and Cleaning Up
+
+To stop all running cluster containers:
+```bash
+make down
+# or:
+podman compose --profile single --profile ha down
+```
+
+To tear down containers, remove named volumes, and prune dangling images:
+```bash
+make prune
+```
+
+### Developing with Dev Containers (VS Code)
+
+You can open this repository directly in VS Code using Dev Containers. It boots the HA Slurm cluster and attaches your workspace to the `client` submission service (`sackd`) with the repository mounted at `/root/slurm-container`.
+
 
 ### Usage
 ```

@@ -131,6 +131,7 @@ case "${SLURM_ROLE}" in
     slurmctld)        
 		# Role slurmctld
 		check_config_file
+		[[ ! -f /var/spool/slurmctld/assoc_usage ]] && SLURMCTLD_OPTIONS+=" -i"
 		slurmctld -D -v $SLURMCTLD_OPTIONS
         ;;
     slurmdbd)
