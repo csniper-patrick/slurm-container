@@ -1,0 +1,17 @@
+{
+  "name": "Slurm HA Cluster",
+  "dockerComposeFile": [
+    "compose.yml",
+    "compose.extend.yml"
+  ],
+  "service": "client",
+  "workspaceFolder": "/root/slurm-container",
+  "shutdownAction": "stopCompose",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}

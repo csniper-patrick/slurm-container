@@ -1,0 +1,7 @@
+services:
+  compute:
+    volumes:
+      - ..:/root/slurm-container
+  client:
+    volumes:
+      - ..:/root/slurm-container
