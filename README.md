@@ -1,115 +1,128 @@
 # Slurm Container
 
-This project builds images that allow users to run Slurm and SlurmDB controllers in container/Kubernetes environments. The cluster is required to use slurm's own authentication mechanism instead of munge (ie `AuthType=auth/slurm`). 
+This project builds images to run Slurm and SlurmDB controllers in container and Kubernetes environments. The cluster must use Slurm token authentication (`AuthType=auth/slurm`) instead of munge.
 
 ## Getting started
 
-Clone the project which contains some examples. Container image has been published to dockerhub.
-```
-git clone --recursive-submodule https://gitlab.com/CSniper/slurm-container.git
+The container image is available on Docker Hub.
+
+Clone the repository and move into the project directory:
+```bash
+git clone --recursive-submodules https://gitlab.com/CSniper/slurm-container.git
 cd slurm-container
 ```
 
 ### Minimal control plane
-Create a new cluster by running this
-```
-root@slurm-master# mkdir -pv /opt/slurm/etc-slurm /opt/slurm/spool-slurmctld
-root@slurm-master# podman run --it --rm --name slurmctld --hostname slurm-master \
->	-v /opt/slurm/spool-slurmctld:/var/spool/slurmctld:Z \
->	-v /opt/slurm/etc-slurm:/etc/slurm:Z --net=hosts --privileged -d \
->	docker.io/csniper/slurm:26.05 --role slurmctld \
->	--clustername demo --slurmctld-hosts slurm-master
-```
-This generates the necessary configuration and starts the slurmctld. The slurm configuration files are located under `/opt/slurm/etc-slurm`. You need to distribute these files to compute nodes/slurmd hosts under `/etc/slurm/`. By default this cluster uses dynamic node, so you need to start slurmd with "-Z" option. or you can modify the generated slurm.conf to give it a list of nodes. 
 
-After the initial run, you can remove `clustername` and `slurmctld-hosts` options. You can remove `--role slurmctld` as well, as slurmctld is the default role.
-```
-root@slurm-master# podman run --it --rm --name slurmctld --hostname slurm-master \
->	-v /opt/slurm/spool-slurmctld:/var/spool/slurmctld:Z \
->	-v /opt/slurm/etc-slurm:/etc/slurm:Z --net=hosts --privileged -d \
->	docker.io/csniper/slurm:26.05 --role slurmctld 
-```
-If you make changes to slurm.conf, make sure you sync the file across the cluster, and then either restart the container or run `scontrol reconfigure` . 
-
-
-### Extract Files for compute node and client node deployment
-#### Packages
-This container image comes with the local repository containing all the slurm packages you need. You could extract the packages following these steps. (eg. extract to /opt/slurm-repo):
+To start a new control plane, run these commands on the master host:
 ```bash
-podman create --name temp_container slurm:<tag> # create a container, without starting it
-podman cp temp_container:/opt/slurm-repo/ /opt/slurm-repo/ # copy local repository
+mkdir -pv /opt/slurm/etc-slurm /opt/slurm/spool-slurmctld
+podman run -it --rm --name slurmctld --hostname slurm-master \
+	-v /opt/slurm/spool-slurmctld:/var/spool/slurmctld:Z \
+	-v /opt/slurm/etc-slurm:/etc/slurm:Z --net=host --privileged -d \
+	docker.io/csniper/slurm:26.05 --role slurmctld \
+	--clustername demo --slurmctld-hosts slurm-master
+```
+
+This command generates the configuration files and starts `slurmctld`. The Slurm configuration files are saved in `/opt/slurm/etc-slurm`. You must copy these files to `/etc/slurm/` on all compute nodes.
+
+By default, this cluster uses dynamic nodes. Start `slurmd` with the `-Z` flag, or edit `slurm.conf` to add static nodes.
+
+After the initial run, you can remove the `--clustername` and `--slurmctld-hosts` options. You can also remove `--role slurmctld`, because `slurmctld` is the default role.
+```bash
+podman run -it --rm --name slurmctld --hostname slurm-master \
+	-v /opt/slurm/spool-slurmctld:/var/spool/slurmctld:Z \
+	-v /opt/slurm/etc-slurm:/etc/slurm:Z --net=host --privileged -d \
+	docker.io/csniper/slurm:26.05 --role slurmctld
+```
+
+If you change `slurm.conf`, make sure that you copy the file across the cluster. Then restart the container or run `scontrol reconfigure`.
+
+### Extract files for compute and client nodes
+
+#### Packages
+
+The container image includes a local package repository with the Slurm packages. To extract the repository to `/opt/slurm-repo`, run these commands:
+```bash
+podman create --name temp_container slurm:<tag>
+podman cp temp_container:/opt/slurm-repo/ /opt/slurm-repo/
 podman rm temp_container
 ```
-The extracted directory contains a repository definition file: `slurm.repo` for dnf/yum repository, `slurm.list` for apt repository. Modify the path in the file if needed, and copy them to either `/etc/yum.repos.d/` or `/etc/apt/sources.list.d/` depends on distro, and now you can install the exact the same version and build of slurm running in the container. 
-#### Configurations - /etc/slurm/
-If you opt not to use a shared file system for /etc/slurm/, here is how you extract the config directory for distribution. 
 
-```
-podman cp <master container name> /etc/slurm/ ./slurm/
-```
-And the copy everything in this folder to /etc/slurm in all other nodes in the slurm cluster. 
+The extracted directory contains repository definition files. `slurm.repo` provides the repository definition for dnf and yum. `slurm.list` provides the repository definition for apt.
 
-If you use config-less mode, you need to at least sync `/etc/slurm/slurm.key` to compute node (slurmd) and client node (sackd)
+If necessary, change the paths inside the file. If your system uses dnf or yum, copy `slurm.repo` to `/etc/yum.repos.d/`. If your system uses apt, copy `slurm.list` to `/etc/apt/sources.list.d/`. You can then install the same version of Slurm on the host.
+
+#### Configuration files
+
+If you do not use a shared file system for `/etc/slurm/`, extract the directory from the master container:
+```bash
+podman cp <master container name>:/etc/slurm/ ./slurm/
+```
+
+Then copy all files in this directory to `/etc/slurm/` on all other nodes in the cluster.
+
+If you use configless mode, you must copy `/etc/slurm/slurm.key` to compute nodes (`slurmd`) and client nodes (`sackd`).
 
 ## More examples
 
-### Local Demo cluster (`./compose.yml`)
-![demo cluster](./imgs/demo-cluster.drawio.svg)  
+### Local demo cluster
+![demo cluster](./imgs/demo-cluster.drawio.svg)
 
-The `compose.yml` file creates a simple single-node cluster with `slurmdbd`, `slurmrestd`, and a submission client (`sackd`) enabled using the `single` profile.
+The `compose.yml` file creates a single-node cluster. The `single` profile starts `slurmdbd`, `slurmrestd`, and a `sackd` submission client.
 ```bash
 make up
 # or:
 podman compose --profile single up -d --force-recreate
 ```
-Among the Slurm containers, the `slurmd` container is required to run in systemd mode. Other containers simply start the process in the foreground.
 
-### High-Availability (HA) demo cluster (`./compose.yml`)
-![demo cluster](./imgs/ha-compose.drawio.svg)  
+The `slurmd` container must run in systemd mode. Other containers run their process in the foreground.
 
-The `ha` profile starts the container cluster with 2 daemons for every service, plus one api host (slurmrestd) and one submission client (sackd).
+### High-availability demo cluster
+![demo cluster](./imgs/ha-compose.drawio.svg)
 
+The `ha` profile starts two daemons for each service. The profile also starts one `slurmrestd` API host and one `sackd` submission client.
 ```bash
 make ha
 # or:
 podman compose --profile ha up -d --force-recreate
 ```
 
-To use locally built images instead of the published images for either cluster mode:
+To use locally built images instead of published images, set `IMAGE_SOURCE=local`:
 ```bash
 make up IMAGE_SOURCE=local
 make ha IMAGE_SOURCE=local
 ```
+
 > [!NOTE]
-> `IMAGE_SOURCE=local` defaults to `TAG=el9`. You can target any supported distribution image by setting `TAG` (e.g., `TAG=el10 make up IMAGE_SOURCE=local` or `TAG=deb12 make ha IMAGE_SOURCE=local`).
+> `IMAGE_SOURCE=local` defaults to `TAG=el9`. You can select any supported distribution image by setting `TAG` (for example, `TAG=el10 make up IMAGE_SOURCE=local` or `TAG=deb12 make ha IMAGE_SOURCE=local`).
 
-### Scaling Compute Nodes
+### Scaling compute nodes
 
-By default, 2 compute worker replicas are started. You can customize this count via `COMPUTE_REPLICAS`:
+The default configuration starts two compute worker replicas. You can change this count with `COMPUTE_REPLICAS`:
 ```bash
 COMPUTE_REPLICAS=4 make ha
 # or with single-node profile:
 COMPUTE_REPLICAS=4 make up
 ```
 
-### Stopping and Cleaning Up
+### Stopping and cleaning up
 
-To stop all running cluster containers:
+To stop all running cluster containers, run this command:
 ```bash
 make down
 # or:
 podman compose --profile single --profile ha down
 ```
 
-To tear down containers, remove named volumes, and prune dangling images:
+To remove containers, remove named volumes, and prune dangling images, run this command:
 ```bash
 make prune
 ```
 
-### Developing with Dev Containers (VS Code)
+### Developing with Dev Containers
 
-You can open this repository directly in VS Code using Dev Containers. It boots the HA Slurm cluster and attaches your workspace to the `client` submission service (`sackd`) with the repository mounted at `/root/slurm-container`.
-
+You can open this repository in VS Code using Dev Containers. The dev container starts the high-availability Slurm cluster. It connects your workspace to the `client` submission service (`sackd`). The repository mounts at `/root/slurm-container`.
 
 ### Usage
 ```
@@ -142,5 +155,7 @@ Usage: /opt/local/bin/entrypoint [--clustername <arg>] [--role <arg>] [--slurmdb
 ```
 
 ## Background
-There had been attempts to containerize Slurm's control plane (ie. slurmdbd and slurmctld), even running it on k8s for reliability and availability. With auth/munge being the only authentication mechanism available between Slurm daemons, the control plane containers are almost required to be authenticated the same way the login/submission and compute nodes are. This situation makes it difficult to build a generic image portable and tested across different Slurm sites. This situation changed with the release of slurm-24.05. Slurm's authentication plugin (`AuthType=auth/slurm`) is introduced in this major release, with this the control plane containers received and trusted the user information from the submission host, and hence they are not required to be authenticated. In addition, munged is not required to run alongside slurm daemons, so each container could focus on running only one of the slurm daemons (slurmctld/slurmdbd/slurmrestd/slurmd).  
 
+Earlier attempts ran `slurmdbd` and `slurmctld` in containers or on Kubernetes. The older `auth/munge` plugin was the only authentication mechanism between Slurm daemons. Therefore, the control plane containers needed the same authentication configuration as the submission and compute hosts. This requirement made generic container images difficult to build and test across different sites.
+
+Slurm 24.05 introduced the native token authentication plugin (`AuthType=auth/slurm`). With token authentication, control plane containers trust user identity information from the submission host. The daemons no longer require munge authentication. You do not need to run `munged` next to Slurm daemons. Each container can run a single Slurm daemon (`slurmctld`, `slurmdbd`, `slurmrestd`, or `slurmd`).
