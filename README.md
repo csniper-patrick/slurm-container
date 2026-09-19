@@ -56,13 +56,13 @@ If you use config-less mode, you need to at least sync `/etc/slurm/slurm.key` to
 ### Local Demo cluster (`./compose.yml`)
 ![demo cluster](./imgs/demo-cluster.drawio.svg)  
 
-The `compose.yml` file creates a simple single-node cluster with `slurmdbd` and `slurmrestd` enabled using the `single` profile.
+The `compose.yml` file creates a simple single-node cluster with `slurmdbd`, `slurmrestd`, and a submission client (`sackd`) enabled using the `single` profile.
 ```bash
 make up
 # or:
 podman compose --profile single up -d --force-recreate
 ```
-In the 4 slurm containers, slurmd container is required to run in systemd mode. Other containers simply start the process in the foreground.
+Among the Slurm containers, the `slurmd` container is required to run in systemd mode. Other containers simply start the process in the foreground.
 
 ### High-Availability (HA) demo cluster (`./compose.yml`)
 ![demo cluster](./imgs/ha-compose.drawio.svg)  

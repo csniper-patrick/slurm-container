@@ -124,6 +124,15 @@ services:
       master:
         condition: service_healthy
 
+  client:
+    <<: *slurm-container
+    profiles: ["single"]
+    environment: *init-var-single
+    command: --role sackd
+    depends_on:
+      master:
+        condition: service_healthy
+
   # ==========================================
   # High-availability (HA) cluster services (profile: ha)
   # ==========================================
@@ -222,7 +231,7 @@ services:
       master-1:
         condition: service_healthy
 
-  client:
+  client-ha:
     <<: *slurm-container
     profiles: ["ha"]
     environment: *init-var-ha
