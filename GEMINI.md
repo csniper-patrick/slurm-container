@@ -32,21 +32,29 @@ make el9
 
 ### Running the Slurm Cluster
 
-The project includes `podman-compose` files for running a Slurm cluster.
+The project uses `compose.yml` with Compose profiles (`single` and `ha`) to run single-node or high-availability (HA) Slurm clusters.
 
-*   `compose.yml`: This file defines a simple, single-node Slurm cluster with a MariaDB database, `slurmdbd`, `slurmctld`, `slurmd`, and `slurmrestd`.
-*   `compose.dev.yml`: This file defines a high-availability (HA) Slurm cluster with two `slurmdbd` instances, two `slurmctld` instances, and two `slurmd` instances.
-
-To run the simple cluster, use:
+To run the single-node cluster:
 
 ```bash
-podman-compose up -d
+make up
+# or:
+podman compose --profile single up -d
 ```
 
-To run the HA cluster, use:
+To run the HA cluster:
 
 ```bash
-podman-compose -f compose.dev.yml up -d
+make ha
+# or:
+podman compose --profile ha up -d
+```
+
+To use locally built images instead of published images:
+
+```bash
+make up IMAGE_SOURCE=local
+make ha IMAGE_SOURCE=local
 ```
 
 ## Development Conventions
