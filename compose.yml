@@ -102,9 +102,13 @@ services:
 
   compute:
     <<: *slurm-container
-    profiles: ["single"]
-    environment: *init-var-single
+    profiles: ["single", "ha"]
+    environment:
+      - SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:-slurm-container-master,slurm-container-master-1,slurm-container-master-2}
     command: --role slurmd
+    deploy:
+      mode: replicated
+      replicas: ${COMPUTE_REPLICAS:-2}
     healthcheck:
       test: ["CMD-SHELL", "until nc -z localhost 6818  ; do sleep 10 ; done"]
       timeout: 72h
@@ -113,6 +117,10 @@ services:
     depends_on:
       master:
         condition: service_healthy
+        required: false
+      master-1:
+        condition: service_healthy
+        required: false
 
   api:
     <<: *slurm-container
@@ -211,23 +219,5 @@ services:
     depends_on:
       slurmdb-1:
         condition: service_healthy
-
-  compute-ha:
-    <<: *slurm-container
-    profiles: ["ha"]
-    environment: *init-var-ha
-    command: --role slurmd
-    deploy:
-      mode: replicated
-      replicas: 2
-    healthcheck:
-      test: ["CMD-SHELL", "until nc -z localhost 6818  ; do sleep 10 ; done"]
-      timeout: 72h
-      interval: 5m
-      start_period: 5s
-    depends_on:
-      master-1:
-        condition: service_healthy
-
 networks:
   default: {}

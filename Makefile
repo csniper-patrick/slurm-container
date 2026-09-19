@@ -28,6 +28,9 @@ MODE ?= $(if $(SLURM_MODE),$(SLURM_MODE),single)
 COMPOSE_PROFILES ?= $(MODE)
 export COMPOSE_PROFILES
 
+COMPUTE_REPLICAS ?= 2
+export COMPUTE_REPLICAS
+
 # Image source selection: released (default) or local.
 # Set IMAGE_SOURCE=local (or LOCAL_IMAGE=1) to use locally built images.
 # Can be overridden directly via SLURM_IMAGE.
