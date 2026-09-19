@@ -34,6 +34,8 @@ x-init-var-single: &init-var-single
   - MYSQL_DATABASE=${MYSQL_DATABASE:-slurm_acct_db}
   - MYSQL_RANDOM_ROOT_PASSWORD=${MYSQL_RANDOM_ROOT_PASSWORD:-yes}
   - SLURMDBD_STORAGEHOST=${SLURMDBD_STORAGEHOST:-slurm-container-db}
+  - CGROUP_CONSTRAINSWAPSPACE=${CGROUP_CONSTRAINSWAPSPACE:-no}
+  - SLURMCTLD_OPTIONS=${SLURMCTLD_OPTIONS:--i}
 
 x-init-var-ha: &init-var-ha
   - SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:-slurm-container-master-1,slurm-container-master-2}
@@ -44,6 +46,8 @@ x-init-var-ha: &init-var-ha
   - MYSQL_DATABASE=${MYSQL_DATABASE:-slurm_acct_db}
   - MYSQL_RANDOM_ROOT_PASSWORD=${MYSQL_RANDOM_ROOT_PASSWORD:-yes}
   - SLURMDBD_STORAGEHOST=${SLURMDBD_STORAGEHOST:-slurm-container-db}
+  - CGROUP_CONSTRAINSWAPSPACE=${CGROUP_CONSTRAINSWAPSPACE:-no}
+  - SLURMCTLD_OPTIONS=${SLURMCTLD_OPTIONS:--i}
 
 x-slurm-container: &slurm-container
   image: ${SLURM_IMAGE:-docker.io/csniper/slurm:${TAG:-26.05}}
@@ -112,8 +116,7 @@ services:
 
   api:
     <<: *slurm-container
-    profiles: ["single"]
-    environment: *init-var-single
+    profiles: ["single", "ha"]
     command: --role slurmrestd
     healthcheck:
       test: ["CMD-SHELL", "until nc -z localhost 6820  ; do sleep 10 ; done"]
@@ -123,15 +126,24 @@ services:
     depends_on:
       master:
         condition: service_healthy
+        required: false
+      master-1:
+        condition: service_healthy
+        required: false
 
   client:
     <<: *slurm-container
-    profiles: ["single"]
-    environment: *init-var-single
+    profiles: ["single", "ha"]
+    environment:
+      - SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:-slurm-container-master,slurm-container-master-1,slurm-container-master-2}
     command: --role sackd
     depends_on:
       master:
         condition: service_healthy
+        required: false
+      master-1:
+        condition: service_healthy
+        required: false
 
   # ==========================================
   # High-availability (HA) cluster services (profile: ha)
@@ -213,29 +225,6 @@ services:
       timeout: 72h
       interval: 5m
       start_period: 5s
-    depends_on:
-      master-1:
-        condition: service_healthy
-
-  api-ha:
-    <<: *slurm-container
-    profiles: ["ha"]
-    environment: *init-var-ha
-    command: --role slurmrestd
-    healthcheck:
-      test: ["CMD-SHELL", "until nc -z localhost 6820  ; do sleep 10 ; done"]
-      timeout: 72h
-      interval: 5m
-      start_period: 5s
-    depends_on:
-      master-1:
-        condition: service_healthy
-
-  client-ha:
-    <<: *slurm-container
-    profiles: ["ha"]
-    environment: *init-var-ha
-    command: --role sackd
     depends_on:
       master-1:
         condition: service_healthy
