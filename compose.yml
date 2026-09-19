@@ -17,22 +17,38 @@ x-common-volumes: &common-volumes
 x-database-volumes: &database-volumes
   - slurm_acct_db:/var/lib/mysql
 
-# All these variable are required for initialising database and cluster configure. Once the cluster has initialised, it follows the configuration saved in the volumes on restart. 
-x-init-var: &init-var
-  - SLURMCTLD_HOSTS=slurm-container-master
-  - SLURMDBD_HOSTS=slurm-container-slurmdb
-  - CLUSTERNAME=demo
-  - MYSQL_PASSWORD=password
-  - MYSQL_USER=slurm
-  - MYSQL_DATABASE=slurm_acct_db
-  - MYSQL_RANDOM_ROOT_PASSWORD=yes
-  - SLURMDBD_STORAGEHOST=slurm-container-db
+x-db-var: &db-var
+  - MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
+  - MYSQL_USER=${MYSQL_USER:-slurm}
+  - MYSQL_DATABASE=${MYSQL_DATABASE:-slurm_acct_db}
+  - MYSQL_RANDOM_ROOT_PASSWORD=${MYSQL_RANDOM_ROOT_PASSWORD:-yes}
+
+# All these variable are required for initialising database and cluster configuration.
+# Once the cluster has initialised, it follows the configuration saved in the volumes on restart.
+x-init-var-single: &init-var-single
+  - SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:-slurm-container-master}
+  - SLURMDBD_HOSTS=${SLURMDBD_HOSTS:-slurm-container-slurmdb}
+  - CLUSTERNAME=${CLUSTERNAME:-demo}
+  - MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
+  - MYSQL_USER=${MYSQL_USER:-slurm}
+  - MYSQL_DATABASE=${MYSQL_DATABASE:-slurm_acct_db}
+  - MYSQL_RANDOM_ROOT_PASSWORD=${MYSQL_RANDOM_ROOT_PASSWORD:-yes}
+  - SLURMDBD_STORAGEHOST=${SLURMDBD_STORAGEHOST:-slurm-container-db}
+
+x-init-var-ha: &init-var-ha
+  - SLURMCTLD_HOSTS=${SLURMCTLD_HOSTS:-slurm-container-master-1,slurm-container-master-2}
+  - SLURMDBD_HOSTS=${SLURMDBD_HOSTS:-slurm-container-slurmdb-1,slurm-container-slurmdb-2}
+  - CLUSTERNAME=${CLUSTERNAME:-demo}
+  - MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
+  - MYSQL_USER=${MYSQL_USER:-slurm}
+  - MYSQL_DATABASE=${MYSQL_DATABASE:-slurm_acct_db}
+  - MYSQL_RANDOM_ROOT_PASSWORD=${MYSQL_RANDOM_ROOT_PASSWORD:-yes}
+  - SLURMDBD_STORAGEHOST=${SLURMDBD_STORAGEHOST:-slurm-container-db}
 
 x-slurm-container: &slurm-container
-  image: docker.io/csniper/slurm:${TAG:-26.05}
+  image: ${SLURM_IMAGE:-docker.io/csniper/slurm:${TAG:-26.05}}
   volumes: *common-volumes
   privileged: true
-  environment: *init-var
   restart: on-failure:10
 
 services:
@@ -41,12 +57,17 @@ services:
     container_name: slurm-container-db
     hostname: slurm-container-db
     volumes: *database-volumes
-    environment: *init-var
+    environment: *db-var
     healthcheck:
       test: "healthcheck.sh --su-mysql --connect --innodb_initialized"
 
+  # ==========================================
+  # Single-node cluster services (profile: single)
+  # ==========================================
   slurmdb:
     <<: *slurm-container
+    profiles: ["single"]
+    environment: *init-var-single
     hostname: slurm-container-slurmdb
     container_name: slurm-container-slurmdb
     command: --role slurmdbd
@@ -61,6 +82,8 @@ services:
 
   master:
     <<: *slurm-container
+    profiles: ["single"]
+    environment: *init-var-single
     hostname: slurm-container-master
     container_name: slurm-container-master
     command: --role slurmctld
@@ -72,9 +95,11 @@ services:
     depends_on:
       slurmdb:
         condition: service_healthy
-        
+
   compute:
     <<: *slurm-container
+    profiles: ["single"]
+    environment: *init-var-single
     command: --role slurmd
     healthcheck:
       test: ["CMD-SHELL", "until nc -z localhost 6818  ; do sleep 10 ; done"]
@@ -84,9 +109,11 @@ services:
     depends_on:
       master:
         condition: service_healthy
-  
+
   api:
     <<: *slurm-container
+    profiles: ["single"]
+    environment: *init-var-single
     command: --role slurmrestd
     healthcheck:
       test: ["CMD-SHELL", "until nc -z localhost 6820  ; do sleep 10 ; done"]
@@ -95,6 +122,113 @@ services:
       start_period: 5s
     depends_on:
       master:
+        condition: service_healthy
+
+  # ==========================================
+  # High-availability (HA) cluster services (profile: ha)
+  # ==========================================
+  slurmdb-1:
+    <<: *slurm-container
+    profiles: ["ha"]
+    environment: *init-var-ha
+    hostname: slurm-container-slurmdb-1
+    container_name: slurm-container-slurmdb-1
+    command: --role slurmdbd
+    healthcheck:
+      test: ["CMD-SHELL", "until nc -z localhost 6819  ; do sleep 10 ; done"]
+      timeout: 72h
+      interval: 5m
+      start_period: 5s
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  slurmdb-2:
+    <<: *slurm-container
+    profiles: ["ha"]
+    environment: *init-var-ha
+    hostname: slurm-container-slurmdb-2
+    container_name: slurm-container-slurmdb-2
+    command: --role slurmdbd
+    healthcheck:
+      test: ["CMD-SHELL", "until nc -z localhost 6819  ; do sleep 10 ; done"]
+      timeout: 72h
+      interval: 5m
+      start_period: 5s
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  master-1:
+    <<: *slurm-container
+    profiles: ["ha"]
+    environment: *init-var-ha
+    hostname: slurm-container-master-1
+    container_name: slurm-container-master-1
+    command: --role slurmctld
+    healthcheck:
+      test: ["CMD-SHELL", "until nc -z localhost 6817  ; do sleep 10 ; done"]
+      timeout: 72h
+      interval: 5m
+      start_period: 5s
+    depends_on:
+      slurmdb-1:
+        condition: service_healthy
+
+  master-2:
+    <<: *slurm-container
+    profiles: ["ha"]
+    environment: *init-var-ha
+    hostname: slurm-container-master-2
+    container_name: slurm-container-master-2
+    command: --role slurmctld
+    healthcheck:
+      test: ["CMD-SHELL", "until nc -z localhost 6817  ; do sleep 10 ; done"]
+      timeout: 72h
+      interval: 5m
+      start_period: 5s
+    depends_on:
+      slurmdb-1:
+        condition: service_healthy
+
+  compute-ha:
+    <<: *slurm-container
+    profiles: ["ha"]
+    environment: *init-var-ha
+    command: --role slurmd
+    deploy:
+      mode: replicated
+      replicas: 2
+    healthcheck:
+      test: ["CMD-SHELL", "until nc -z localhost 6818  ; do sleep 10 ; done"]
+      timeout: 72h
+      interval: 5m
+      start_period: 5s
+    depends_on:
+      master-1:
+        condition: service_healthy
+
+  api-ha:
+    <<: *slurm-container
+    profiles: ["ha"]
+    environment: *init-var-ha
+    command: --role slurmrestd
+    healthcheck:
+      test: ["CMD-SHELL", "until nc -z localhost 6820  ; do sleep 10 ; done"]
+      timeout: 72h
+      interval: 5m
+      start_period: 5s
+    depends_on:
+      master-1:
+        condition: service_healthy
+
+  client:
+    <<: *slurm-container
+    profiles: ["ha"]
+    environment: *init-var-ha
+    command: --role sackd
+    depends_on:
+      master-1:
         condition: service_healthy
 
 networks:

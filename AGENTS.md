@@ -32,17 +32,26 @@ The project builds and containerizes Slurm services such as `slurmctld`, `slurmd
   ```
 * **Run simple single-node Slurm cluster:**
   ```bash
-  podman-compose up -d
+  make up
+  # or directly:
+  podman-compose --profile single up -d
   ```
 * **Run high-availability (HA) Slurm cluster:**
   ```bash
-  podman-compose -f compose.dev.yml up -d
+  make ha
+  # or directly:
+  podman-compose --profile ha up -d
+  ```
+* **Use local images instead of released image:**
+  ```bash
+  make up IMAGE_SOURCE=local  # single node with local image
+  make ha IMAGE_SOURCE=local  # HA with local image
   ```
 * **Stop cluster:**
   ```bash
-  podman-compose down
-  # or for HA:
-  podman-compose -f compose.dev.yml down
+  make down
+  # or directly:
+  podman-compose --profile single --profile ha down
   ```
 
 ---

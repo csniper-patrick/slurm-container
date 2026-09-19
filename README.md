@@ -56,19 +56,29 @@ If you use config-less mode, you need to at least sync `/etc/slurm/slurm.key` to
 ### Local Demo cluster (`./compose.yml`)
 ![demo cluster](./imgs/demo-cluster.drawio.svg)  
 
-The compose.yml file included in the repository creates a very simple cluster with slurmdbd and slurmrestd enabled. 
-```
-podman compose up -d --force-recreate
+The `compose.yml` file creates a simple single-node cluster with `slurmdbd` and `slurmrestd` enabled using the `single` profile.
+```bash
+make up
+# or:
+podman compose --profile single up -d --force-recreate
 ```
 In the 4 slurm containers, slurmd container is required to run in systemd mode. Other containers simply start the process in the foreground.
 
-### More complicated demo cluster (`./compose.dev.yml`)
+### High-Availability (HA) demo cluster (`./compose.yml`)
 ![demo cluster](./imgs/ha-compose.drawio.svg)  
 
-This compose file expects a locally built image, and starts the container cluster with 2 daemons for every service, plus one api host (slurmrestd) and one submission client (sackd)
+The `ha` profile starts the container cluster with 2 daemons for every service, plus one api host (slurmrestd) and one submission client (sackd).
 
+```bash
+make ha
+# or:
+podman compose --profile ha up -d --force-recreate
 ```
-podman compose -f compose.dev.yml up -d --force-recreate
+
+To use locally built images instead of the published images for either cluster mode:
+```bash
+make up IMAGE_SOURCE=local
+make ha IMAGE_SOURCE=local
 ```
 
 ### Usage

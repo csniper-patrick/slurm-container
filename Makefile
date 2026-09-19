@@ -19,8 +19,35 @@ SLURM_VER := $(shell grep "Version:" slurm/slurm.spec | head -n 1 | awk '{print 
 # This will produce a space-separated list of distro names (e.g., "deb12 el8 el9").
 DISTROS := $(sort $(patsubst %/Containerfile,%,$(shell ls */Containerfile 2>/dev/null)))
 
+# Mode selection: single (default) or ha (high-availability).
+# Can be controlled via:
+#   make up              # Single-node cluster (default)
+#   make ha              # High-availability cluster
+#   MODE=ha make up      # High-availability cluster via env var
+MODE ?= $(if $(SLURM_MODE),$(SLURM_MODE),single)
+COMPOSE_PROFILES ?= $(MODE)
+export COMPOSE_PROFILES
+
+# Image source selection: released (default) or local.
+# Set IMAGE_SOURCE=local (or LOCAL_IMAGE=1) to use locally built images.
+# Can be overridden directly via SLURM_IMAGE.
+ifneq ($(filter 1 true yes,$(LOCAL_IMAGE) $(USE_LOCAL_IMAGE)),)
+	IMAGE_SOURCE := local
+endif
+IMAGE_SOURCE ?= released
+
+ifeq ($(IMAGE_SOURCE),local)
+	TAG ?= el9
+	SLURM_IMAGE ?= localhost/slurm:$(TAG)
+else
+	TAG ?= 26.05
+	SLURM_IMAGE ?= docker.io/csniper/slurm:$(TAG)
+endif
+export SLURM_IMAGE
+export TAG
+
 # Phony targets don't represent files.
-.PHONY: all build clean prune $(DISTROS) up dev down
+.PHONY: all build clean prune $(DISTROS) up ha down
 
 # The default target when `make` is run without arguments.
 # Builds all discovered distributions.
@@ -36,20 +63,20 @@ $(DISTROS):
 	@echo "Building slurm:$@ image..."
 	@$(PODMAN) build --pull=newer -t slurm:$@ -t slurm:$(SLURM_VER)-$@ --squash -f $@/Containerfile . 2>&1 | tee $@-img-build.log
 
-# Prune dangling container images.
+# Prune dangling container images and volumes across all cluster profiles.
 prune:
-	$(PODMAN) compose down --volumes --remove-orphans
+	COMPOSE_PROFILES=single,ha $(PODMAN) compose down --volumes --remove-orphans
 	$(PODMAN) image prune -f
 
 # Start/stop slurm-container stack using compose.
 up:
 	$(PODMAN) compose up -d --remove-orphans --force-recreate
 
-dev:
-	$(PODMAN) compose -f compose.dev.yml up -d --remove-orphans --force-recreate
+ha:
+	@$(MAKE) up MODE=ha COMPOSE_PROFILES=ha
 
 down:
-	$(PODMAN) compose down --remove-orphans
+	COMPOSE_PROFILES=single,ha $(PODMAN) compose down --remove-orphans
 
 # Clean up generated files.
 clean:
