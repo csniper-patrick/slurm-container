@@ -81,11 +81,44 @@ generate_cgroup_conf () {
 }
 
 keygen_RS256 () {
-	java -jar /opt/local/lib/json-web-key-generator.jar --type RSA --size 2048 --algorithm RS256 --idGenerator sha1 --keySet --output ${1:?missing private key path} --pubKeyOutput ${2:?missing public key path} && chmod 0644 ${2} && chmod 0600 ${1}
+	local priv_out="${1:?missing private key path}"
+	local pub_out="${2:?missing public key path}"
+	local tmp_dir
+	tmp_dir=$(mktemp -d)
+	local tmp_pub="${tmp_dir}/pub.raw.json"
+	local tmp_priv="${tmp_dir}/priv.raw.json"
+
+	step crypto jwk create "${tmp_pub}" "${tmp_priv}" \
+		--kty RSA --size 2048 --alg RS256 --no-password --insecure
+
+	local kid
+	kid=$(step crypto jwk thumbprint < "${tmp_pub}")
+
+	jq -n --slurpfile k <(jq --arg kid "${kid}" '. + {kid: $kid}' "${tmp_priv}") '{"keys": $k}' > "${priv_out}"
+	jq -n --slurpfile k <(jq --arg kid "${kid}" '. + {kid: $kid}' "${tmp_pub}") '{"keys": $k}' > "${pub_out}"
+
+	chmod 0644 "${pub_out}"
+	chmod 0600 "${priv_out}"
+	rm -rf "${tmp_dir}"
 }
 
-keygen_HS264 () {
-	java -jar /opt/local/lib/json-web-key-generator.jar --type oct --size 2048 --algorithm HS256 --idGenerator sha1 --keySet --output ${1?missing key path} && chmod 0600 ${1?missing key path}
+keygen_HS256 () {
+	local key_out="${1:?missing key path}"
+	local tmp_dir
+	tmp_dir=$(mktemp -d)
+	local tmp_pub="${tmp_dir}/pub.raw.json"
+	local tmp_priv="${tmp_dir}/priv.raw.json"
+
+	step crypto jwk create "${tmp_pub}" "${tmp_priv}" \
+		--kty oct --size 256 --no-password --insecure
+
+	local kid
+	kid=$(step crypto jwk thumbprint < "${tmp_priv}")
+
+	jq -n --slurpfile k <(jq --arg kid "${kid}" '. + {kid: $kid}' "${tmp_priv}") '{"keys": $k}' > "${key_out}"
+
+	chmod 0600 "${key_out}"
+	rm -rf "${tmp_dir}"
 }
 
 check_config_file () {
@@ -108,7 +141,7 @@ check_config_file () {
 
 	# generate /etc/slurm/slurm.jwks if necessary
 	( [[ -f /etc/slurm/slurm.jwks ]] && [[ ${KEYGEN} == off ]] ) \
-	|| keygen_HS264 /etc/slurm/slurm.jwks
+	|| keygen_HS256 /etc/slurm/slurm.jwks
 
 	# ensure correct directory ownership
 	slurm_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurm*.conf | cut -c11- | head -n1)
@@ -180,7 +213,7 @@ case "${SLURM_ROLE}" in
 		done
 
 		[[ -f /etc/slurm/slurm.jwks ]] && mv -v /etc/slurm/slurm.jwks /etc/slurm/slurm.jwks.${DATE}
-		keygen_HS264 /etc/slurm/slurm.jwks
+		keygen_HS256 /etc/slurm/slurm.jwks
 		[[ -f /etc/slurm/slurm.key ]] && mv -v /etc/slurm/slurm.key /etc/slurm/slurm.key.${DATE}
 		dd if=/dev/random of=/etc/slurm/slurm.key bs=1024 count=1 && chmod 0600 /etc/slurm/slurm.key
         ;;

@@ -1,0 +1,20 @@
+#!/bin/bash
+# Generate a signed Slurm JWT token using the cluster RS256 private key and step-cli
+set -euo pipefail
+
+USERNAME="${1:-${USER:-slurm}}"
+LIFESPAN="${2:-3600}"
+PRIV_KEY="${3:-/etc/slurm/jwks.json.priv}"
+
+if [[ ! -f "${PRIV_KEY}" ]]; then
+    echo "Error: Private key not found at ${PRIV_KEY}" >&2
+    exit 1
+fi
+
+KID=$(jq -r '.keys[0].kid' "${PRIV_KEY}")
+EXP=$(($(date +%s) + LIFESPAN))
+
+TOKEN=$(echo "{\"sun\": \"${USERNAME}\", \"username\": \"${USERNAME}\"}" | \
+    step crypto jwt sign --iss slurm --aud slurm --sub "${USERNAME}" --jwks "${PRIV_KEY}" --kid "${KID}" --exp "${EXP}")
+
+echo "SLURM_JWT=${TOKEN}"
