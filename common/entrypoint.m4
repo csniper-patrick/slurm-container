@@ -133,11 +133,8 @@ keygen_HS256 () {
 		echo "Error: failed to create oct key with step" >&2
 		rc=1
 	else
-		if command -v sha256sum >/dev/null 2>&1; then
-			kid=$(sha256sum "${tmp_priv}" | cut -d' ' -f1)
-		elif command -v step >/dev/null 2>&1; then
-			kid=$(step crypto hash digest "${tmp_priv}" | cut -d' ' -f1)
-		fi
+		# step cannot thumbprint oct keys; use a random 128-bit hex kid
+		kid=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
 
 		if [[ -z "${kid}" ]]; then
 			echo "Error: failed to derive key id" >&2

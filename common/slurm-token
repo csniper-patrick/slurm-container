@@ -1,13 +1,31 @@
 #!/bin/bash
 # Generate a signed Slurm JWT token using the cluster RS256 private key and step-cli
+# Usage: slurm-token [--raw] [username] [lifespan-seconds] [private-key]
+#   --raw  print only the token (e.g. for slurmrestd's X-SLURM-USER-TOKEN header)
 set -euo pipefail
+
+RAW=off
+if [[ "${1:-}" == "--raw" ]]; then
+    RAW=on
+    shift
+fi
 
 USERNAME="${1:-${USER:-slurm}}"
 LIFESPAN="${2:-3600}"
 PRIV_KEY="${3:-/etc/slurm/jwks.json.priv}"
 
+if [[ ! "${LIFESPAN}" =~ ^[0-9]+$ ]]; then
+    echo "Error: lifespan must be a whole number of seconds, got '${LIFESPAN}'" >&2
+    exit 1
+fi
+
 if [[ ! -f "${PRIV_KEY}" ]]; then
     echo "Error: Private key not found at ${PRIV_KEY}" >&2
+    exit 1
+fi
+
+if [[ ! -r "${PRIV_KEY}" ]]; then
+    echo "Error: Permission denied reading ${PRIV_KEY} (mode 0600, owned by SlurmUser); run as root or SlurmUser" >&2
     exit 1
 fi
 
@@ -21,4 +39,8 @@ EXP=$(($(date +%s) + LIFESPAN))
 TOKEN=$(jq -n --arg user "${USERNAME}" '{sun: $user, username: $user}' | \
     step crypto jwt sign --subtle --jwks "${PRIV_KEY}" --kid "${KID}" --exp "${EXP}")
 
-echo "SLURM_JWT=${TOKEN}"
+if [[ ${RAW} == on ]]; then
+    echo "${TOKEN}"
+else
+    echo "SLURM_JWT=${TOKEN}"
+fi
