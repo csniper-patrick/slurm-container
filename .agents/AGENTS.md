@@ -9,7 +9,7 @@ The project builds and containerizes Slurm services such as `slurmctld`, `slurmd
 The core of the project is a set of container images that can be built for various Linux distributions (e.g., Debian 12, Debian 13, EL8, EL9, EL10). The project is designed to be flexible, supporting different configurations from a minimal single-node setup to a high-availability (HA) cluster.
 
 ### Directory Mapping
-* `common/`: Houses shared configuration templates (`slurm.conf.j2`, `slurmdbd.conf.j2`, `cgroup.conf.j2`), custom configuration extensions (`slurmd-extra.conf`), and the entrypoint template source (`entrypoint.m4`, `build-entrypoint.sh`).
+* `common/`: Houses shared configuration templates (`slurm.conf.j2`, `slurmdbd.conf.j2`, `cgroup.conf.j2`), custom configuration extensions (`slurmd-extra.conf`), helper scripts (`slurm-token`), and the entrypoint template source (`entrypoint.m4`, `build-entrypoint.sh`).
 * `slurm/`: Git submodule pointing to the upstream SchedMD Slurm repository.
 * Distribution Folders (`deb12`, `deb13`, `el8`, `el9`, `el10`): Each contains a `Containerfile` and OS-specific scripts to compile and build packages from the Slurm source submodule.
 * `gitlab-ci.d/`: CI templates (`container-build.yml.j2`, `container-tag.yml.j2`) used dynamically to generate pipeline jobs for GitLab CI.
@@ -22,6 +22,7 @@ The core of the project is a set of container images that can be built for vario
 * **Makefile Automation:** The `Makefile` dynamically discovers directories containing a `Containerfile` (distributions) and compiles images for them. Phony targets such as `all`, `build`, `prune`, `up`, `ha`, and `down` are supported.
 * **Entrypoint Generation:** The `/opt/local/bin/entrypoint` script in target images is constructed by compiling `common/entrypoint.m4` using `argbash` via `common/build-entrypoint.sh`. Always edit the `common/entrypoint.m4` template to make changes to entrypoint logic, then re-generate the script.
 * **Configuration Management:** System configuration files are generated dynamically inside the containers at startup using `jinja2-cli` with templates under `common/` based on environment variables or entrypoint arguments.
+* **Key Generation & Token Authentication:** Slurm token authentication keys (RFC 7517 JWKS) are generated dynamically using Smallstep CLI (`step-cli`) and `jq` at container startup. Standalone user JWT tokens can be created using `/opt/local/bin/slurm-token`.
 
 ### Build and Run Commands
 

@@ -11,10 +11,14 @@ if [[ ! -f "${PRIV_KEY}" ]]; then
     exit 1
 fi
 
-KID=$(jq -r '.keys[0].kid' "${PRIV_KEY}")
+if ! KID=$(jq -e -r '.keys[0].kid // empty' "${PRIV_KEY}"); then
+    echo "Error: Failed to extract valid kid from ${PRIV_KEY}" >&2
+    exit 1
+fi
 EXP=$(($(date +%s) + LIFESPAN))
 
-TOKEN=$(echo "{\"sun\": \"${USERNAME}\", \"username\": \"${USERNAME}\"}" | \
-    step crypto jwt sign --iss slurm --aud slurm --sub "${USERNAME}" --jwks "${PRIV_KEY}" --kid "${KID}" --exp "${EXP}")
+# Construct JWT payload: 'sun' (Slurm User Name) and 'username' are expected by Slurm's auth/jwt plugin
+TOKEN=$(jq -n --arg user "${USERNAME}" '{sun: $user, username: $user}' | \
+    step crypto jwt sign --subtle --jwks "${PRIV_KEY}" --kid "${KID}" --exp "${EXP}")
 
 echo "SLURM_JWT=${TOKEN}"

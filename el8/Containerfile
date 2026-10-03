@@ -17,7 +17,7 @@ COPY --from=build /opt/entrypoint /opt/local/bin/entrypoint
 COPY common/slurm-token /opt/local/bin/slurm-token
 COPY common/*.j2 LICENSE /opt/local/
 
-RUN printf "[smallstep]\nname=Smallstep\nbaseurl=https://packages.smallstep.com/stable/fedora/\nenabled=1\nrepo_gpgcheck=0\ngpgcheck=0\n" > /etc/yum.repos.d/smallstep.repo \
+RUN printf "[smallstep]\nname=Smallstep\nbaseurl=https://packages.smallstep.com/stable/fedora/\nenabled=1\nrepo_gpgcheck=0\ngpgcheck=1\ngpgkey=https://packages.smallstep.com/keys/smallstep-0x889B19391F774443.gpg\n" > /etc/yum.repos.d/smallstep.repo \
 	&& yum install -y yum-utils epel-release \
 	&& yum-config-manager --enable powertools \
 	&& yum install -y slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm step-cli jq python3 sudo nc xorg-x11-xauth hostname \

@@ -80,45 +80,67 @@ generate_cgroup_conf () {
 	! grep -q -E "^ProctrackType=proctrack/cgroup$" /etc/slurm/slurm.conf || /opt/local/bin/jinja2 /opt/local/cgroup.conf.j2 > /etc/slurm/cgroup.conf
 }
 
+_wrap_jwks () {
+	local tmp_file="${1:?missing tmp key file}"
+	local out_file="${2:?missing output file}"
+	local kid="${3:?missing kid}"
+	local mode="${4:?missing file mode}"
+
+	if ! jq --arg kid "${kid}" '{"keys": [. + {kid: $kid}]}' "${tmp_file}" > "${out_file}"; then
+		echo "Error: failed to generate JWKS output for ${out_file}" >&2
+		return 1
+	fi
+	chmod "${mode}" "${out_file}"
+}
+
 keygen_RS256 () {
 	local priv_out="${1:?missing private key path}"
 	local pub_out="${2:?missing public key path}"
 	local tmp_dir
-	tmp_dir=$(mktemp -d)
+	tmp_dir=$(mktemp -d) || return 1
 	local tmp_pub="${tmp_dir}/pub.raw.json"
 	local tmp_priv="${tmp_dir}/priv.raw.json"
-
-	step crypto jwk create "${tmp_pub}" "${tmp_priv}" \
-		--kty RSA --size 2048 --alg RS256 --no-password --insecure
-
 	local kid
-	kid=$(step crypto jwk thumbprint < "${tmp_pub}")
+	local rc=0
 
-	jq -n --slurpfile k <(jq --arg kid "${kid}" '. + {kid: $kid}' "${tmp_priv}") '{"keys": $k}' > "${priv_out}"
-	jq -n --slurpfile k <(jq --arg kid "${kid}" '. + {kid: $kid}' "${tmp_pub}") '{"keys": $k}' > "${pub_out}"
+	if ! step crypto jwk create "${tmp_pub}" "${tmp_priv}" \
+		--kty RSA --size 2048 --alg RS256 --no-password --insecure; then
+		echo "Error: failed to create RSA keypair with step" >&2
+		rc=1
+	elif ! kid=$(step crypto jwk thumbprint < "${tmp_pub}"); then
+		echo "Error: failed to derive thumbprint with step" >&2
+		rc=1
+	elif ! _wrap_jwks "${tmp_priv}" "${priv_out}" "${kid}" 0600 || \
+	     ! _wrap_jwks "${tmp_pub}" "${pub_out}" "${kid}" 0644; then
+		rc=1
+	fi
 
-	chmod 0644 "${pub_out}"
-	chmod 0600 "${priv_out}"
 	rm -rf "${tmp_dir}"
+	return ${rc}
 }
 
 keygen_HS256 () {
 	local key_out="${1:?missing key path}"
 	local tmp_dir
-	tmp_dir=$(mktemp -d)
-	local tmp_pub="${tmp_dir}/pub.raw.json"
+	tmp_dir=$(mktemp -d) || return 1
+	local tmp_dummy="${tmp_dir}/dummy.raw.json"
 	local tmp_priv="${tmp_dir}/priv.raw.json"
-
-	step crypto jwk create "${tmp_pub}" "${tmp_priv}" \
-		--kty oct --size 256 --no-password --insecure
-
 	local kid
-	kid=$(step crypto jwk thumbprint < "${tmp_priv}")
+	local rc=0
 
-	jq -n --slurpfile k <(jq --arg kid "${kid}" '. + {kid: $kid}' "${tmp_priv}") '{"keys": $k}' > "${key_out}"
+	if ! step crypto jwk create "${tmp_dummy}" "${tmp_priv}" \
+		--kty oct --size 256 --alg HS256 --no-password --insecure; then
+		echo "Error: failed to create oct key with step" >&2
+		rc=1
+	elif ! kid=$(step crypto jwk thumbprint < "${tmp_priv}"); then
+		echo "Error: failed to derive thumbprint with step" >&2
+		rc=1
+	elif ! _wrap_jwks "${tmp_priv}" "${key_out}" "${kid}" 0600; then
+		rc=1
+	fi
 
-	chmod 0600 "${key_out}"
 	rm -rf "${tmp_dir}"
+	return ${rc}
 }
 
 check_config_file () {

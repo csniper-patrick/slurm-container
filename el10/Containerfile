@@ -19,7 +19,7 @@ COPY common/slurm-token /opt/local/bin/slurm-token
 COPY common/*.j2 LICENSE /opt/local/
 COPY el10/rocky-9.repo /etc/yum.repos.d/rocky-9.repo
 
-RUN printf "[smallstep]\nname=Smallstep\nbaseurl=https://packages.smallstep.com/stable/fedora/\nenabled=1\nrepo_gpgcheck=0\ngpgcheck=0\n" > /etc/yum.repos.d/smallstep.repo \
+RUN printf "[smallstep]\nname=Smallstep\nbaseurl=https://packages.smallstep.com/stable/fedora/\nenabled=1\nrepo_gpgcheck=0\ngpgcheck=1\ngpgkey=https://packages.smallstep.com/keys/smallstep-0x889B19391F774443.gpg\n" > /etc/yum.repos.d/smallstep.repo \
 	&& dnf -y install yum-utils epel-release \
 	&& dnf config-manager --enable crb \
 	&& dnf -y --enablerepo=rocky-9-baseos,rocky-9-appstream,rocky-9-crb,rocky-9-epel install http-parser http-parser-devel libjwt libjwt-devel \
