@@ -80,12 +80,72 @@ generate_cgroup_conf () {
 	! grep -q -E "^ProctrackType=proctrack/cgroup$" /etc/slurm/slurm.conf || /opt/local/bin/jinja2 /opt/local/cgroup.conf.j2 > /etc/slurm/cgroup.conf
 }
 
-keygen_RS256 () {
-	java -jar /opt/local/lib/json-web-key-generator.jar --type RSA --size 2048 --algorithm RS256 --idGenerator sha1 --keySet --output ${1:?missing private key path} --pubKeyOutput ${2:?missing public key path} && chmod 0644 ${2} && chmod 0600 ${1}
+_wrap_jwks () {
+	local tmp_file="${1:?missing tmp key file}"
+	local out_file="${2:?missing output file}"
+	local kid="${3:?missing kid}"
+	local mode="${4:?missing file mode}"
+
+	if ! jq --arg kid "${kid}" '{"keys": [. + {kid: $kid}]}' "${tmp_file}" > "${out_file}"; then
+		echo "Error: failed to generate JWKS output for ${out_file}" >&2
+		return 1
+	fi
+	chmod "${mode}" "${out_file}"
 }
 
-keygen_HS264 () {
-	java -jar /opt/local/lib/json-web-key-generator.jar --type oct --size 2048 --algorithm HS256 --idGenerator sha1 --keySet --output ${1?missing key path} && chmod 0600 ${1?missing key path}
+keygen_RS256 () {
+	local priv_out="${1:?missing private key path}"
+	local pub_out="${2:?missing public key path}"
+	local tmp_dir
+	tmp_dir=$(mktemp -d) || return 1
+	local tmp_pub="${tmp_dir}/pub.raw.json"
+	local tmp_priv="${tmp_dir}/priv.raw.json"
+	local kid
+	local rc=0
+
+	if ! step crypto jwk create "${tmp_pub}" "${tmp_priv}" \
+		--kty RSA --size 2048 --alg RS256 --no-password --insecure; then
+		echo "Error: failed to create RSA keypair with step" >&2
+		rc=1
+	elif ! kid=$(step crypto jwk thumbprint < "${tmp_pub}"); then
+		echo "Error: failed to derive thumbprint with step" >&2
+		rc=1
+	elif ! _wrap_jwks "${tmp_priv}" "${priv_out}" "${kid}" 0600 || \
+	     ! _wrap_jwks "${tmp_pub}" "${pub_out}" "${kid}" 0644; then
+		rc=1
+	fi
+
+	rm -rf "${tmp_dir}"
+	return ${rc}
+}
+
+keygen_HS256 () {
+	local key_out="${1:?missing key path}"
+	local tmp_dir
+	tmp_dir=$(mktemp -d) || return 1
+	local tmp_dummy="${tmp_dir}/dummy.raw.json"
+	local tmp_priv="${tmp_dir}/priv.raw.json"
+	local kid
+	local rc=0
+
+	if ! step crypto jwk create "${tmp_dummy}" "${tmp_priv}" \
+		--kty oct --size 256 --alg HS256 --no-password --insecure; then
+		echo "Error: failed to create oct key with step" >&2
+		rc=1
+	else
+		# step cannot thumbprint oct keys; use a random 128-bit hex kid
+		kid=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+
+		if [[ -z "${kid}" ]]; then
+			echo "Error: failed to derive key id" >&2
+			rc=1
+		elif ! _wrap_jwks "${tmp_priv}" "${key_out}" "${kid}" 0600; then
+			rc=1
+		fi
+	fi
+
+	rm -rf "${tmp_dir}"
+	return ${rc}
 }
 
 check_config_file () {
@@ -108,7 +168,7 @@ check_config_file () {
 
 	# generate /etc/slurm/slurm.jwks if necessary
 	( [[ -f /etc/slurm/slurm.jwks ]] && [[ ${KEYGEN} == off ]] ) \
-	|| keygen_HS264 /etc/slurm/slurm.jwks
+	|| keygen_HS256 /etc/slurm/slurm.jwks
 
 	# ensure correct directory ownership
 	slurm_user=$(grep -h -E "^SlurmUser=" /etc/slurm/slurm*.conf | cut -c11- | head -n1)
@@ -180,7 +240,7 @@ case "${SLURM_ROLE}" in
 		done
 
 		[[ -f /etc/slurm/slurm.jwks ]] && mv -v /etc/slurm/slurm.jwks /etc/slurm/slurm.jwks.${DATE}
-		keygen_HS264 /etc/slurm/slurm.jwks
+		keygen_HS256 /etc/slurm/slurm.jwks
 		[[ -f /etc/slurm/slurm.key ]] && mv -v /etc/slurm/slurm.key /etc/slurm/slurm.key.${DATE}
 		dd if=/dev/random of=/etc/slurm/slurm.key bs=1024 count=1 && chmod 0600 /etc/slurm/slurm.key
         ;;

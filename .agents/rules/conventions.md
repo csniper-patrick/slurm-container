@@ -7,6 +7,7 @@
 * **Makefile Automation:** The `Makefile` dynamically discovers directories containing a `Containerfile` (distributions) and compiles images for them. Phony targets such as `all`, `build`, `prune`, `up`, `ha`, and `down` are supported.
 * **Entrypoint Generation:** The `/opt/local/bin/entrypoint` script in target images is constructed by compiling `common/entrypoint.m4` using `argbash` via `common/build-entrypoint.sh`. Always edit the `common/entrypoint.m4` template to make changes to entrypoint logic, then re-generate the script.
 * **Configuration Management:** System configuration files are generated dynamically inside the containers at startup using `jinja2-cli` with templates under `common/` based on environment variables or entrypoint arguments.
+* **Key Generation & Token Authentication:** Slurm token authentication keys (RFC 7517 JWKS) are generated dynamically using Smallstep CLI (`step-cli`) and `jq` at container startup. Standalone user JWT tokens can be created using `/opt/local/bin/slurm-token`.
 
 ## Build and Run Commands
 
