@@ -132,11 +132,19 @@ keygen_HS256 () {
 		--kty oct --size 256 --alg HS256 --no-password --insecure; then
 		echo "Error: failed to create oct key with step" >&2
 		rc=1
-	elif ! kid=$(step crypto jwk thumbprint < "${tmp_priv}"); then
-		echo "Error: failed to derive thumbprint with step" >&2
-		rc=1
-	elif ! _wrap_jwks "${tmp_priv}" "${key_out}" "${kid}" 0600; then
-		rc=1
+	else
+		if command -v sha256sum >/dev/null 2>&1; then
+			kid=$(sha256sum "${tmp_priv}" | cut -d' ' -f1)
+		elif command -v step >/dev/null 2>&1; then
+			kid=$(step crypto hash digest "${tmp_priv}" | cut -d' ' -f1)
+		fi
+
+		if [[ -z "${kid}" ]]; then
+			echo "Error: failed to derive key id" >&2
+			rc=1
+		elif ! _wrap_jwks "${tmp_priv}" "${key_out}" "${kid}" 0600; then
+			rc=1
+		fi
 	fi
 
 	rm -rf "${tmp_dir}"
