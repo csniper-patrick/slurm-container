@@ -16,9 +16,9 @@ COPY --from=build /etc/yum.repos.d/slurm.repo /etc/yum.repos.d/slurm.repo
 COPY --from=build /opt/entrypoint /opt/local/bin/entrypoint
 COPY common/slurm-token /opt/local/bin/slurm-token
 COPY common/*.j2 LICENSE /opt/local/
+COPY el8/smallstep.repo /etc/yum.repos.d/smallstep.repo
 
-RUN printf "[smallstep]\nname=Smallstep\nbaseurl=https://packages.smallstep.com/stable/fedora/\nenabled=1\nrepo_gpgcheck=0\ngpgcheck=1\ngpgkey=https://packages.smallstep.com/keys/smallstep-0x889B19391F774443.gpg\n" > /etc/yum.repos.d/smallstep.repo \
-	&& yum install -y yum-utils epel-release \
+RUN yum install -y yum-utils epel-release \
 	&& yum-config-manager --enable powertools \
 	&& yum install -y slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm step-cli jq python3 sudo nc xorg-x11-xauth hostname \
 	&& yum -y update \
@@ -33,7 +33,7 @@ RUN python3 -m venv /opt/local && /opt/local/bin/python3 -m pip install jinja2-c
 
 # start slurmd via systemd
 COPY common/slurmd-extra.conf /etc/systemd/system/slurmd.service.d/
-RUN ln -sf /lib/systemd/system/multi-user.targßet /etc/systemd/system/default.target \
+RUN ln -sf /lib/systemd/system/multi-user.target /etc/systemd/system/default.target \
 	&& ln -s /usr/lib/systemd/system/slurmd.service /etc/systemd/system/multi-user.target.wants/ \
 	&& rm -f /etc/systemd/system/systemd-logind.service 
 
