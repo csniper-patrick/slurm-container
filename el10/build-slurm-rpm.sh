@@ -25,6 +25,8 @@ else
 	slurm_source_dir=slurm-${ver}-${rel}
 fi
 mv slurm-src ${slurm_source_dir}
+# Include RPM Epoch when present (e.g. EL10 ucx has Epoch 1) so Requires matches installed package
+sed -i 's#--qf "%{RPMTAG_VERSION}"#--qf "%{RPMTAG_EPOCH}:%{RPMTAG_VERSION}" | sed "s/^(none)://"#g' ${slurm_source_dir}/slurm.spec
 tar jcvf ${slurm_source_dir}.tar.bz2 ${slurm_source_dir}
 rpmbuild --noclean -ta --with slurmrestd --with hdf5 --with hwloc --with numa --with pmix --with nvml  --with lua --with ucx --with jwt --with freeipmi ${slurm_source_dir}.tar.bz2 |& tee build.log
 cd ~
