@@ -43,7 +43,7 @@ ifeq ($(IMAGE_SOURCE),local)
 	TAG ?= el9
 	SLURM_IMAGE ?= slurm:$(TAG)
 else
-	TAG ?= 26.05
+	TAG ?= 26.11
 	SLURM_IMAGE ?= docker.io/csniper/slurm:$(TAG)
 endif
 export SLURM_IMAGE

@@ -20,7 +20,7 @@ mkdir -pv /opt/slurm/etc-slurm /opt/slurm/spool-slurmctld
 podman run -it --rm --name slurmctld --hostname slurm-master \
 	-v /opt/slurm/spool-slurmctld:/var/spool/slurmctld:Z \
 	-v /opt/slurm/etc-slurm:/etc/slurm:Z --net=host --privileged -d \
-	docker.io/csniper/slurm:26.05 --role slurmctld \
+	docker.io/csniper/slurm:26.11 --role slurmctld \
 	--clustername demo --slurmctld-hosts slurm-master
 ```
 
@@ -33,7 +33,7 @@ After the initial run, you can remove the `--clustername` and `--slurmctld-hosts
 podman run -it --rm --name slurmctld --hostname slurm-master \
 	-v /opt/slurm/spool-slurmctld:/var/spool/slurmctld:Z \
 	-v /opt/slurm/etc-slurm:/etc/slurm:Z --net=host --privileged -d \
-	docker.io/csniper/slurm:26.05 --role slurmctld
+	docker.io/csniper/slurm:26.11 --role slurmctld
 ```
 
 If you change `slurm.conf`, make sure that you copy the file across the cluster. Then restart the container or run `scontrol reconfigure`.

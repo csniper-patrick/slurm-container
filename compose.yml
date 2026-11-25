@@ -44,7 +44,7 @@ x-init-var-ha: &init-var-ha
 
 
 x-slurm-container: &slurm-container
-  image: ${SLURM_IMAGE:-docker.io/csniper/slurm:${TAG:-26.05}}
+  image: ${SLURM_IMAGE:-docker.io/csniper/slurm:${TAG:-26.11}}
   volumes: *common-volumes
   privileged: true
   restart: on-failure:10
