@@ -22,6 +22,7 @@ COPY el10/smallstep.repo /etc/yum.repos.d/smallstep.repo
 
 RUN dnf -y install yum-utils epel-release \
 	&& dnf config-manager --enable crb \
+	&& dnf config-manager --save --setopt=epel.exclude="slurm*" \
 	&& dnf -y --enablerepo=rocky-9-baseos,rocky-9-appstream,rocky-9-crb,rocky-9-epel install http-parser http-parser-devel \
 	&& dnf -y install "libjwt < 3.0.0" "libjwt-devel < 3.0.0" slurm-slurmctld slurm-slurmd slurm-slurmdbd slurm-slurmrestd slurm-sackd slurm-example-configs slurm-contribs slurm-devel slurm-libpmi slurm-pam_slurm step-cli jq sudo nc xorg-x11-xauth hostname \
 	&& dnf clean all
